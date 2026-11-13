@@ -283,3 +283,8 @@ Tài liệu chính thức:
 - Authorization Code with PKCE: <https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow>
 - Redirect URI: <https://developer.spotify.com/documentation/web-api/concepts/redirect_uri>
 - Development Mode / quota modes: <https://developer.spotify.com/documentation/web-api/concepts/quota-modes>
+
+
+## Bản nâng cấp nhận diện & gợi ý (2026-11-13)
+
+Xem `docs/README_NANG_CAP_RECOGNITION_RECOMMENDATION.md` để chạy migration, seed MusicBrainz, tạo fingerprint hợp pháp và kiểm thử. Quảng cáo chưa bật.

@@ -1,4 +1,6 @@
 from uuid import UUID
+import pytest
+from app.core.supabase import get_user_supabase
 
 from fastapi.testclient import TestClient
 
@@ -20,8 +22,23 @@ def make_app(settings: Settings | None = None):
         supabase_publishable_key="publishable-key",
         acoustid_client_key="test-acoustid-key",
     )
+    class FakeDB:
+        async def select(self,*args,**kwargs): return []
+        async def request(self,*args,**kwargs): return []
+        async def insert(self,*args,**kwargs): return [{"id":"test"}]
+    app.dependency_overrides[get_user_supabase] = FakeDB
     return app
 
+
+
+
+@pytest.fixture(autouse=True)
+def fake_decoder_for_api_mocks(monkeypatch):
+    from app.routers import identify
+    async def fake_decode(*args, **kwargs): return 18
+    async def fake_fallback(*args, **kwargs): return []
+    monkeypatch.setattr(identify, "decode_audio_async", fake_decode)
+    monkeypatch.setattr(identify, "_fallback_match", fake_fallback)
 
 def test_identify_requires_authentication():
     client = TestClient(create_app())
@@ -75,25 +92,21 @@ def test_identify_returns_music_metadata(monkeypatch):
     assert body["results"][0]["score"] == 0.94
 
 
-def test_identify_requires_acoustid_configuration(monkeypatch):
+def test_identify_fallback_without_acoustid_key(monkeypatch):
     from app.routers import identify
-
-    async def should_not_run(*args, **kwargs):
-        raise AssertionError("fingerprinting should not run without API key")
-
-    monkeypatch.setattr(identify, "generate_fingerprint", should_not_run)
+    async def should_not_call_acoustid(*args, **kwargs):
+        raise AssertionError("AcoustID not configured")
+    monkeypatch.setattr(identify, "lookup_acoustid", should_not_call_acoustid)
     settings = Settings(
         supabase_url="https://example.supabase.co",
         supabase_publishable_key="publishable-key",
         acoustid_client_key="",
     )
-    client = TestClient(make_app(settings))
-    response = client.post(
-        "/api/identify",
-        files={"file": ("sample.wav", b"fake audio", "audio/wav")},
+    response=TestClient(make_app(settings)).post(
+        "/api/identify", files={"file":("sample.wav",b"fake audio","audio/wav")}
     )
-    assert response.status_code == 503
-    assert "ACOUSTID_CLIENT_KEY" in response.json()["error"]["message"]
+    assert response.status_code == 200
+    assert response.json()["status"]=="not_found"
 
 
 def test_identify_rejects_unsupported_file_type():
@@ -135,6 +148,8 @@ def test_identify_rejects_audio_that_is_too_short(monkeypatch):
     async def should_not_lookup(*args, **kwargs):
         raise AssertionError("AcoustID should not be queried for clips that are too short")
 
+    async def short_decode(*args, **kwargs): return 3
+    monkeypatch.setattr(identify, "decode_audio_async", short_decode)
     monkeypatch.setattr(identify, "generate_fingerprint", fake_fingerprint)
     monkeypatch.setattr(identify, "lookup_acoustid", should_not_lookup)
     client = TestClient(make_app())

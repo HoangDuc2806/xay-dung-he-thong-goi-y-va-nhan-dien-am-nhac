@@ -32,6 +32,7 @@ export type RecognizedTrack = {
   musicbrainz_recording_id: string | null;
   musicbrainz_url: string | null;
   acoustid_url: string | null;
+  recognition_method?: "acoustid" | "mdvn_landmark";
 };
 
 export type MusicRecognitionResponse = {
@@ -102,4 +103,25 @@ export async function searchSpotifyTracks(query: string, signal?: AbortSignal): 
     throw new ApiError(body?.error?.message ?? body?.detail ?? "Không tìm kiếm được trên Spotify.", response.status);
   }
   return (await response.json()) as SpotifySearchResponse;
+}
+
+
+export type SpotifyNowPlayingResponse = {
+  status: "playing"|"paused"|"not_playing";
+  track: null | {id:string|null; name:string; artists:string[]; album:string|null; image_url:string|null; spotify_url:string|null; duration_ms:number|null};
+};
+export async function fetchSpotifyNowPlaying(supabaseToken:string, spotifyToken:string):Promise<SpotifyNowPlayingResponse>{
+  const response=await fetch(`${API_URL}/api/spotify/now-playing`,{
+    headers:{"Authorization":`Bearer ${supabaseToken}`,"X-Spotify-Access-Token":spotifyToken},cache:"no-store",
+  });
+  if(!response.ok){
+    const value=await response.json().catch(()=>null) as {error?:{message?:string}}|null;
+    throw new ApiError(value?.error?.message||"Không lấy được bài đang phát trên Spotify.",response.status);
+  }
+  return response.json() as Promise<SpotifyNowPlayingResponse>;
+}
+export async function listRecognitionHistory(token:string):Promise<Array<{id:string;status:string;duration_seconds:number;results:RecognizedTrack[];created_at:string}>>{
+  const response=await fetch(`${API_URL}/api/identify/history`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+  if(!response.ok)throw new ApiError("Không tải được lịch sử nhận diện.",response.status);
+  return response.json();
 }

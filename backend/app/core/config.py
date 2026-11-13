@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     # Music recognition: Chromaprint fpcalc + AcoustID public lookup API.
     acoustid_client_key: str = ""
     chromaprint_fpcalc_path: str = "fpcalc"
+    recognition_ffmpeg_path: str = "ffmpeg"
+    recognition_ffprobe_path: str = "ffprobe"
     recognition_max_upload_bytes: int = 20 * 1024 * 1024
     recognition_fingerprint_length_seconds: int = 120
     recognition_min_duration_seconds: int = 5

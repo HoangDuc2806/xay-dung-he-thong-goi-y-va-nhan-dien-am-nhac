@@ -12,12 +12,15 @@ import {
   RotateCcw,
   Search,
   Square,
+  Headphones,
 } from "lucide-react";
 import { AuthGate } from "@/components/auth-gate";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/components/providers";
-import { identifyAudio, type MusicRecognitionResponse } from "@/lib/api";
+import { identifyAudio, fetchSpotifyNowPlaying, listRecognitionHistory, type MusicRecognitionResponse, type SpotifyNowPlayingResponse } from "@/lib/api";
+import { getValidSpotifyAccessToken } from "@/lib/spotify-oauth";
+import { useSpotifyPlayer } from "@/components/spotify-player-provider";
 import { requireSupabase } from "@/lib/supabase";
 
 const panel = "rounded-2xl border border-ink-700 bg-ink-900 p-5 sm:p-6";
@@ -34,6 +37,11 @@ function formatDuration(seconds: number) {
 
 function IdentifyContent() {
   const { user } = useAuth();
+  const { authorized, connectSpotify } = useSpotifyPlayer();
+  const [nowPlaying, setNowPlaying] = useState<SpotifyNowPlayingResponse | null>(null);
+  const [nowPlayingBusy, setNowPlayingBusy] = useState(false);
+  const [nowPlayingError, setNowPlayingError] = useState("");
+  const [history, setHistory] = useState<Array<{ id: string; status: string; duration_seconds: number; results: MusicRecognitionResponse["results"]; created_at: string }>>([]);
   const [file, setFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -81,13 +89,14 @@ function IdentifyContent() {
     setFile(nextFile);
   }
 
-  async function startRecording() {
+  async function startRecording(mode: "microphone" | "tab" = "microphone") {
     setError("");
     setResult(null);
     setFile(null);
 
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setError("Trình duyệt này không hỗ trợ ghi âm. Hãy tải lên một tệp âm thanh thay thế.");
+    if (typeof navigator === "undefined" || !navigator.mediaDevices ||
+        (mode === "tab" ? !navigator.mediaDevices.getDisplayMedia : !navigator.mediaDevices.getUserMedia)) {
+      setError("Trình duyệt không hỗ trợ nguồn âm thanh này. Hãy dùng micro hoặc tải tệp.");
       return;
     }
     if (typeof MediaRecorder === "undefined") {
@@ -96,14 +105,22 @@ function IdentifyContent() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-      });
+      const stream = mode === "microphone"
+        ? await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+          })
+        : await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      if (stream.getAudioTracks().length === 0) {
+        stream.getTracks().forEach(track => track.stop());
+        setError("Nguồn chia sẻ không có audio track. Hãy bật chia sẻ âm thanh tab nếu trình duyệt hỗ trợ.");
+        return;
+      }
       streamRef.current = stream;
       const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"].find(
         (candidate) => MediaRecorder.isTypeSupported(candidate),
       );
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const audioStream = new MediaStream(stream.getAudioTracks());
+      const recorder = mimeType ? new MediaRecorder(audioStream, { mimeType }) : new MediaRecorder(audioStream);
       recorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -165,12 +182,39 @@ function IdentifyContent() {
       if (!data.session?.access_token) throw new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
       const response = await identifyAudio(file, data.session.access_token);
       setResult(response);
+      void listRecognitionHistory(data.session.access_token).then(setHistory).catch(() => undefined);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Không thể nhận diện âm thanh lúc này.");
     } finally {
       setBusy(false);
     }
   }
+
+  async function checkNowPlaying() {
+    setNowPlayingBusy(true);setNowPlayingError("");
+    try {
+      const session = await requireSupabase().auth.getSession();
+      const userToken=session.data.session?.access_token;
+      const spotifyToken=await getValidSpotifyAccessToken();
+      if(!userToken) throw new Error("Hãy đăng nhập vào Music Discovery.");
+      if(!spotifyToken) throw new Error("Hãy kết nối lại tài khoản Spotify.");
+      setNowPlaying(await fetchSpotifyNowPlaying(userToken,spotifyToken));
+    } catch(e) {
+      setNowPlayingError(e instanceof Error?e.message:"Không lấy được trạng thái Spotify.");
+    } finally {setNowPlayingBusy(false);}
+  }
+
+  useEffect(()=>{
+    if(!user)return;
+    let alive=true;
+    void requireSupabase().auth.getSession().then(async ({data})=>{
+      if(data.session?.access_token){
+        const rows=await listRecognitionHistory(data.session.access_token);
+        if(alive)setHistory(rows);
+      }
+    }).catch(()=>undefined);
+    return ()=>{alive=false;};
+  },[user?.id]);
 
   function reset() {
     setFile(null);
@@ -211,6 +255,11 @@ function IdentifyContent() {
             )}
           </div>
 
+          <button type="button" onClick={() => void startRecording("tab")} disabled={busy||recording}
+            className="mt-3 w-full rounded-xl border border-ink-600 px-4 py-2 text-sm text-mist-100 hover:border-lime-500 disabled:opacity-50">
+            Thu âm tab/màn hình có quyền sử dụng (nếu trình duyệt hỗ trợ)
+          </button>
+          <p className="mt-2 text-xs text-mist-400">Chỉ chia sẻ âm thanh bạn được phép xử lý. Không dùng chức năng này để trích xuất hoặc phân tích luồng âm thanh Spotify.</p>
           <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-widest text-mist-400">
             <span className="h-px flex-1 bg-ink-700" /> hoặc tải lên <span className="h-px flex-1 bg-ink-700" />
           </div>
@@ -218,11 +267,11 @@ function IdentifyContent() {
           <label htmlFor="audio-file" className="flex cursor-pointer flex-col items-center rounded-2xl border border-dashed border-ink-600 bg-ink-950/60 p-5 text-center transition hover:border-lime-500">
             <FileAudio size={25} className="mb-2 text-lime-400" />
             <span className="text-sm font-semibold">Chọn tệp âm thanh</span>
-            <span className="mt-1 text-xs text-mist-300">MP3, WAV, FLAC, OGG, M4A, AAC, WebM · tối đa 20 MB</span>
+            <span className="mt-1 text-xs text-mist-300">MP3, WAV, WebM/Opus, M4A, FLAC, OGG, WMA, AIFF, CAF... · tối đa 20 MB</span>
             <input
               id="audio-file"
               type="file"
-              accept="audio/*,.mp3,.wav,.flac,.ogg,.oga,.m4a,.mp4,.aac,.webm,.opus"
+              accept="audio/*,.mp3,.wav,.flac,.ogg,.oga,.m4a,.mp4,.aac,.webm,.opus,.wma,.aif,.aiff,.caf,.mka,.3gp,.amr"
               className="sr-only"
               disabled={busy || recording}
               onChange={(event) => acceptFile(event.target.files?.[0] ?? null)}
@@ -256,7 +305,7 @@ function IdentifyContent() {
           <h2 id="results-title" className="flex items-center gap-2 text-xl font-bold">
             <AudioLines size={21} className="text-lime-400" /> Kết quả nhận diện
           </h2>
-          <p className="mb-5 mt-2 text-sm text-mist-300">Thông tin được tra cứu từ cơ sở dữ liệu dấu vân tay âm thanh AcoustID và MusicBrainz.</p>
+          <p className="mb-5 mt-2 text-sm text-mist-300">Kết quả từ AcoustID/MusicBrainz hoặc fingerprint dự phòng của catalog độc lập. Điểm khớp không phải xác suất chắc chắn.</p>
 
           {error && (
             <div role="alert" className="flex gap-3 rounded-xl border border-red-800/70 bg-red-950/30 p-4 text-sm text-red-200">
@@ -297,9 +346,10 @@ function IdentifyContent() {
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold leading-snug">{track.title}</h3>
                       <p className="mt-1 text-sm text-mist-300">{track.artists.length ? track.artists.join(", ") : "Chưa có thông tin nghệ sĩ"}</p>
+                      <p className="mt-1 text-xs text-mist-400">Phương pháp: {track.recognition_method === "mdvn_landmark" ? "MDVN Landmark (kho độc lập)" : "Chromaprint + AcoustID"}</p>
                       {(track.album || track.year) && <p className="mt-1 text-xs text-mist-400">{[track.album, track.year].filter(Boolean).join(" · ")}</p>}
                     </div>
-                    <span className="shrink-0 rounded-full bg-ink-800 px-2.5 py-1 text-xs tabular-nums text-lime-300">{Math.round(track.score * 100)}% khớp</span>
+                    <span className="shrink-0 rounded-full bg-ink-800 px-2.5 py-1 text-xs tabular-nums text-lime-300">{Math.round(track.score * 100)}% điểm</span>
                   </div>
                   <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-ink-800">
                     <div className="h-full rounded-full bg-lime-400" style={{ width: `${Math.round(track.score * 100)}%` }} />
@@ -311,12 +361,40 @@ function IdentifyContent() {
                   </div>
                 </article>
               ))}
-              <p className="text-xs leading-relaxed text-mist-400">Độ khớp là điểm do AcoustID trả về, không phải xác suất chắc chắn. Hãy nghe và đối chiếu kết quả trước khi sử dụng.</p>
+              <p className="text-xs leading-relaxed text-mist-400">Điểm số không phải xác suất. Kết quả MDVN chưa được hiệu chỉnh độ chính xác trên tập nhạc thực tế.</p>
               <button type="button" onClick={reset} className="inline-flex items-center gap-2 rounded-xl border border-ink-700 px-4 py-2 text-sm hover:border-lime-500"><RotateCcw size={15} /> Nhận diện đoạn khác</button>
             </div>
           )}
         </section>
       </div>
+      <section className={panel}>
+        <h2 className="flex items-center gap-2 text-xl font-bold"><Headphones size={20} className="text-lime-400"/>Spotify Now Playing</h2>
+        <p className="mt-2 text-sm text-mist-300">Đọc metadata bài đang phát từ Spotify API, không phải nhận diện dựa trên âm thanh. Cần tài khoản Spotify đã cấp quyền.</p>
+        <button type="button" disabled={nowPlayingBusy} onClick={()=>authorized?void checkNowPlaying():connectSpotify("/identify")}
+          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-lime-500 px-4 py-2 text-sm text-lime-300 disabled:opacity-50">
+          {nowPlayingBusy?<LoaderCircle className="animate-spin" size={16}/>:<Headphones size={16}/>}
+          {authorized?"Kiểm tra bài đang phát":"Kết nối Spotify"}
+        </button>
+        {nowPlayingError&&<p role="alert" className="mt-2 text-sm text-red-300">{nowPlayingError}</p>}
+        {nowPlaying?.status==="not_playing"&&<p className="mt-3 text-sm text-mist-300">Spotify không báo có bài hát đang phát.</p>}
+        {nowPlaying?.track&&<div className="mt-4 flex items-center gap-3 rounded-xl border border-ink-700 p-3">
+          {nowPlaying.track.image_url&&<img src={nowPlaying.track.image_url} alt="" className="size-14 rounded-lg object-cover"/>}
+          <div className="min-w-0 flex-1"><p className="truncate font-semibold">{nowPlaying.track.name}</p>
+            <p className="truncate text-sm text-mist-300">{nowPlaying.track.artists.join(", ")}</p>
+          </div>
+          {nowPlaying.track.spotify_url&&<a href={nowPlaying.track.spotify_url} target="_blank" rel="noreferrer" className="text-sm text-lime-400">Spotify</a>}
+        </div>}
+      </section>
+      <section className={panel}>
+        <h2 className="text-xl font-bold">Lịch sử nhận diện</h2>
+        <p className="mt-2 text-xs text-mist-300">Chỉ lưu metadata kết quả nhận diện; không lưu lại file âm thanh.</p>
+        {history.length===0?<p className="mt-3 text-sm text-mist-300">Chưa có lịch sử.</p>:<ul className="mt-3 space-y-2">
+          {history.slice(0,15).map(row=><li key={row.id} className="rounded-lg border border-ink-700 p-3 text-sm">
+            <span className="font-medium">{row.results[0]?.title??"Chưa nhận diện được"}</span>
+            <span className="ml-2 text-xs text-mist-400">{new Date(row.created_at).toLocaleString("vi-VN")}</span>
+          </li>)}
+        </ul>}
+      </section>
     </div>
   );
 }

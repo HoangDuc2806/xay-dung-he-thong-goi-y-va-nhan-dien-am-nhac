@@ -61,6 +61,7 @@ export async function startSpotifyAuthorization(returnTo = "/search") {
       "user-read-email",
       "user-read-private",
       "user-read-playback-state",
+      "user-read-currently-playing",
       "user-modify-playback-state",
     ].join(" "),
   });

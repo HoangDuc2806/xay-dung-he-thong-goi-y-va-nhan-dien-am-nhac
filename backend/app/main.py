@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
-from app.routers import health, account, profile, favorites, playlists, playlist_tracks, playlist_items, history, identify, spotify
+from app.routers import health, account, profile, favorites, playlists, playlist_tracks, playlist_items, history, identify, spotify, recommendations
 
 
 def create_app() -> FastAPI:
@@ -15,7 +15,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
         allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-Spotify-Access-Token"],
     )
     register_error_handlers(app)
     app.include_router(health.router)
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(history.router)
     app.include_router(identify.router)
     app.include_router(spotify.router)
+    app.include_router(recommendations.router)
     return app
 
 
