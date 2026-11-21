@@ -1,12 +1,26 @@
-"""Create mdvn-landmark-v1 hashes for an independently licensed audio catalog item.
+"""Export v2 fingerprints as JSON. Use tools/index_licensed_audio.py for database indexing."""
+import argparse
+import json
+import tempfile
+from pathlib import Path
+from app.core.config import Settings
+from app.services.audio_decode import decode_audio
+from app.services.landmark_fingerprint import ALGORITHM, fingerprint_wav
 
-Usage: python scripts_fingerprint_catalog.py /path/to/licensed-track.mp3
-Output JSON can be used to populate music_catalog.fingerprint_hashes.
-Do not fingerprint Spotify streams or audio unless your license permits it.
-"""
-import json, sys
-from app.services.landmark_fingerprint import generate_landmark_fingerprint
-if len(sys.argv) != 2:
-    raise SystemExit("Usage: python scripts_fingerprint_catalog.py <licensed-audio-file>")
-result=generate_landmark_fingerprint(sys.argv[1])
-print(json.dumps(result,ensure_ascii=False))
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("file", type=Path)
+    args = parser.parse_args()
+    settings = Settings(_env_file=Path(__file__).parent / ".env.local")
+    with tempfile.TemporaryDirectory(prefix="mdvn-export-") as temp:
+        wav = Path(temp) / "audio.wav"
+        duration = decode_audio(args.file, wav, ffmpeg=settings.recognition_ffmpeg_path,
+                                ffprobe=settings.recognition_ffprobe_path)
+        points = fingerprint_wav(wav, max_points=2_000_000, max_seconds=1800)
+    print(json.dumps({"algorithm": ALGORITHM, "duration_seconds": duration,
+                      "points": [{"hash": digest, "offset_ms": offset} for digest, offset in points]}))
+
+
+if __name__ == "__main__":
+    main()

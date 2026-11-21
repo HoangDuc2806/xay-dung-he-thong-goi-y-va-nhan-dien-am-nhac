@@ -1,0 +1,174 @@
+﻿{
+    "summary":  [
+                    {
+                        "method":  "landmark",
+                        "queries":  176,
+                        "known_queries":  144,
+                        "correct":  136,
+                        "wrong_known":  0,
+                        "not_found":  8,
+                        "unknown_queries":  32,
+                        "false_accept":  10,
+                        "known_recall_percent":  94.44,
+                        "overall_accuracy_percent":  89.77,
+                        "latency_p50_ms":  88.596,
+                        "latency_p95_ms":  204.565
+                    },
+                    {
+                        "method":  "mfcc_dtw",
+                        "queries":  176,
+                        "known_queries":  144,
+                        "correct":  76,
+                        "wrong_known":  0,
+                        "not_found":  68,
+                        "unknown_queries":  32,
+                        "false_accept":  10,
+                        "known_recall_percent":  52.78,
+                        "overall_accuracy_percent":  55.68,
+                        "latency_p50_ms":  68.537,
+                        "latency_p95_ms":  105.497
+                    }
+                ],
+    "per_track":  [
+                      {
+                          "method":  "landmark",
+                          "title":  "Tranquility",
+                          "queries":  16,
+                          "correct":  10,
+                          "percent":  62.5
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "Ritual",
+                          "queries":  16,
+                          "correct":  16,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "Broken Reality",
+                          "queries":  16,
+                          "correct":  14,
+                          "percent":  87.5
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "On the Passing of Time",
+                          "queries":  16,
+                          "correct":  16,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "Parisian",
+                          "queries":  8,
+                          "correct":  8,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "Thatched Villagers",
+                          "queries":  16,
+                          "correct":  16,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "The Entertainer",
+                          "queries":  16,
+                          "correct":  16,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "Swansong",
+                          "queries":  16,
+                          "correct":  16,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "California Lullabye",
+                          "queries":  16,
+                          "correct":  16,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "landmark",
+                          "title":  "Guitar Solo in F# Minor",
+                          "queries":  8,
+                          "correct":  8,
+                          "percent":  100
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "Tranquility",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "Ritual",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "Broken Reality",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "On the Passing of Time",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "Parisian",
+                          "queries":  8,
+                          "correct":  6,
+                          "percent":  75
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "Thatched Villagers",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "The Entertainer",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "Swansong",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "California Lullabye",
+                          "queries":  16,
+                          "correct":  8,
+                          "percent":  50
+                      },
+                      {
+                          "method":  "mfcc_dtw",
+                          "title":  "Guitar Solo in F# Minor",
+                          "queries":  8,
+                          "correct":  6,
+                          "percent":  75
+                      }
+                  ]
+}

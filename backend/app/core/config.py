@@ -1,5 +1,8 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Literal
+from pydantic import Field
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -23,6 +26,10 @@ class Settings(BaseSettings):
     # Spotify catalog search (server-side only; never expose client secret to frontend).
     spotify_client_id: str = ""
     spotify_client_secret: str = ""
+    recommendation_model_path: str = str(Path(__file__).resolve().parents[2] / "artifacts" / "recommender.json")
+    discovery_cache_path: Path | None = Path(__file__).resolve().parents[2] / "data" / "discovery.sqlite3"
+    recognition_local_bundle: str = str(Path(__file__).resolve().parents[2] / "artifacts" / "local_recognition.npz")
+    recognition_local_evaluation: str = str(Path(__file__).resolve().parents[2] / "artifacts" / "recognition_evaluation.json")
 
     # Music recognition: Chromaprint fpcalc + AcoustID public lookup API.
     acoustid_client_key: str = ""
@@ -33,6 +40,10 @@ class Settings(BaseSettings):
     recognition_fingerprint_length_seconds: int = 120
     recognition_min_duration_seconds: int = 5
     recognition_max_duration_seconds: int = 1800
+    recognition_mode: Literal["hybrid", "landmark", "acoustid", "audd"] = "hybrid"
+    audd_api_token: str = ""
+    recognition_landmark_min_votes: int = Field(12, ge=7, le=400)
+    recognition_landmark_min_score: float = Field(0.05, ge=0, le=1)
 
     @property
     def cors_origin_list(self) -> list[str]:

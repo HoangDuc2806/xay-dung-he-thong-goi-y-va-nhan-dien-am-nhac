@@ -60,7 +60,7 @@ def make_app(db):
     app=create_app()
     app.dependency_overrides[get_auth_context]=lambda:AuthContext(user=AuthenticatedUser(id=USER,email="user@example.com"),access_token="supabase-token")
     app.dependency_overrides[get_user_supabase]=lambda:db
-    app.dependency_overrides[get_settings]=lambda:Settings(supabase_url="https://example.supabase.co",supabase_publishable_key="pk",acoustid_client_key="mock")
+    app.dependency_overrides[get_settings]=lambda:Settings(_env_file=None,supabase_url="https://example.supabase.co",supabase_publishable_key="pk",acoustid_client_key="mock",discovery_cache_path=None)
     return app
 
 def test_recommendation_routes_never_query_spotify_listening_history():
@@ -80,6 +80,53 @@ def test_recommendation_routes_never_query_spotify_listening_history():
 def test_now_playing_requires_auth():
     client=TestClient(create_app())
     assert client.get("/api/spotify/now-playing",headers={"X-Spotify-Access-Token":"a-long-spotify-token"}).status_code==401
+
+
+def test_preferences_round_trip_never_returns_ownership_fields():
+    db=FakeDb();client=TestClient(make_app(db))
+    payload={"genres":["ballad"],"moods":["sad"],"languages":["vi","en"],
+             "artists":[],"blocked_artists":[],"discovery_level":50}
+    first=client.put("/api/recommendations/preferences",json=payload)
+    assert first.status_code == 200
+    assert db.prefs["user_id"] == str(USER)
+    assert "user_id" not in first.json()
+    # This is the exact frontend sequence that previously produced 422:
+    # GET recommendations -> copy its preferences -> PUT preferences.
+    loaded=client.get("/api/recommendations").json()["preferences"]
+    assert loaded == payload
+    assert client.put("/api/recommendations/preferences",json=loaded).status_code == 200
+    assert client.get("/api/recommendations/preferences").json() == payload
+
+
+def test_preferences_still_rejects_client_supplied_owner():
+    client=TestClient(make_app(FakeDb()))
+    assert client.put("/api/recommendations/preferences",json={"user_id":str(USER)}).status_code == 422
+
+
+def test_no_matches_is_distinct_from_empty_catalog_and_browse_keeps_preferences():
+    db=FakeDb();client=TestClient(make_app(db))
+    assert client.put("/api/recommendations/preferences",json={"artists":["bray"]}).status_code == 200
+    result=client.get("/api/recommendations").json()
+    assert result["items"] == []
+    assert result["status"] == "no_matches"
+    assert result["catalog_size"] == 3
+    assert result["missing_artists"] == ["bray"]
+    assert set(result["available_languages"]) == {"vi","en"}
+    browsed=client.get("/api/recommendations",params={"browse":"true"}).json()
+    assert browsed["status"] == "discovery"
+    assert len(browsed["items"]) == 3
+    assert all(row["score"] == 0 for row in browsed["items"])
+    assert client.get("/api/recommendations/preferences").json()["artists"] == ["bray"]
+
+
+def test_actually_empty_catalog_has_its_own_status():
+    class EmptyDb(FakeDb):
+        async def select(self,table,**kwargs):
+            return []
+    result=TestClient(make_app(EmptyDb())).get("/api/recommendations").json()
+    assert result["status"] == "empty_catalog"
+    assert result["catalog_size"] == 0
+    assert result["items"] == []
 
 def test_now_playing_mocked_success(monkeypatch):
     from app.routers import spotify

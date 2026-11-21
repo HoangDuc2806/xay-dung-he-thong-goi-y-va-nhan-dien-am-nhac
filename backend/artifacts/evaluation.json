@@ -1,0 +1,407 @@
+{
+  "dataset": "ListenBrainz official incremental dump",
+  "license": "CC0-1.0",
+  "source_url": "https://data.metabrainz.org/pub/musicbrainz/listenbrainz/incremental/listenbrainz-dump-2782-20261113-000002-incremental/listenbrainz-listens-dump-2782-20261113-000002-incremental.tar.zst",
+  "sha256": "bed3ff393f805afa211771ab433b746f923c95ad17e7d52bd7f77fc7d0491961",
+  "trained_at": "2026-11-20T17:40:41.599881+00:00",
+  "since": "2026-10-13",
+  "raw_listens": 6177546,
+  "selected_listens": 167468,
+  "users": 3283,
+  "items": 2000,
+  "train_events": 144628,
+  "test_events": 22840,
+  "cutoff_utc": "2026-11-12T17:30:40+00:00",
+  "selection": "Train-only top recordings (>=3 listeners), deterministic hashed user sample; identified Spotify submissions excluded",
+  "parameters": {
+    "neighbors": 100,
+    "shrinkage": 5,
+    "user_balance": 0.25,
+    "min_pair_users": 2,
+    "weight": "log1p(play_count)",
+    "hybrid_cf_weight": 0.7
+  },
+  "validation": {
+    "cutoff_utc": "2026-11-12T13:53:26+00:00",
+    "selection_metric": "ndcg@10, then recall@10",
+    "selected": {
+      "fit": {
+        "neighbors": 100,
+        "shrinkage": 5,
+        "user_balance": 0.25
+      },
+      "hybrid_cf_weight": 0.7,
+      "precision@10": 0.066231,
+      "recall@10": 0.149603,
+      "ndcg@10": 0.127396,
+      "hit_rate@10": 0.291213,
+      "catalog_coverage": 0.797399
+    },
+    "trials": [
+      {
+        "fit": {
+          "neighbors": 50,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.5,
+        "precision@10": 0.066521,
+        "recall@10": 0.1522,
+        "ndcg@10": 0.125279,
+        "hit_rate@10": 0.291939,
+        "catalog_coverage": 0.801901
+      },
+      {
+        "fit": {
+          "neighbors": 50,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.7,
+        "precision@10": 0.065868,
+        "recall@10": 0.149323,
+        "ndcg@10": 0.126852,
+        "hit_rate@10": 0.290487,
+        "catalog_coverage": 0.772886
+      },
+      {
+        "fit": {
+          "neighbors": 50,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.85,
+        "precision@10": 0.066304,
+        "recall@10": 0.147494,
+        "ndcg@10": 0.125315,
+        "hit_rate@10": 0.285403,
+        "catalog_coverage": 0.752876
+      },
+      {
+        "fit": {
+          "neighbors": 50,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.95,
+        "precision@10": 0.066739,
+        "recall@10": 0.146562,
+        "ndcg@10": 0.125245,
+        "hit_rate@10": 0.287582,
+        "catalog_coverage": 0.747874
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.5,
+        "precision@10": 0.066231,
+        "recall@10": 0.150737,
+        "ndcg@10": 0.124923,
+        "hit_rate@10": 0.287582,
+        "catalog_coverage": 0.8009
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.7,
+        "precision@10": 0.066231,
+        "recall@10": 0.148179,
+        "ndcg@10": 0.126773,
+        "hit_rate@10": 0.292665,
+        "catalog_coverage": 0.771886
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.85,
+        "precision@10": 0.066885,
+        "recall@10": 0.148122,
+        "ndcg@10": 0.126019,
+        "hit_rate@10": 0.289034,
+        "catalog_coverage": 0.753877
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 10,
+          "user_balance": 0
+        },
+        "hybrid_cf_weight": 0.95,
+        "precision@10": 0.067175,
+        "recall@10": 0.146752,
+        "ndcg@10": 0.125715,
+        "hit_rate@10": 0.286855,
+        "catalog_coverage": 0.744372
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.5,
+        "precision@10": 0.065577,
+        "recall@10": 0.149128,
+        "ndcg@10": 0.124928,
+        "hit_rate@10": 0.286129,
+        "catalog_coverage": 0.809905
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.7,
+        "precision@10": 0.066231,
+        "recall@10": 0.149603,
+        "ndcg@10": 0.127396,
+        "hit_rate@10": 0.291213,
+        "catalog_coverage": 0.797399
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.85,
+        "precision@10": 0.066449,
+        "recall@10": 0.147916,
+        "ndcg@10": 0.126736,
+        "hit_rate@10": 0.291213,
+        "catalog_coverage": 0.789395
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.95,
+        "precision@10": 0.066376,
+        "recall@10": 0.14462,
+        "ndcg@10": 0.125073,
+        "hit_rate@10": 0.287582,
+        "catalog_coverage": 0.778389
+      },
+      {
+        "fit": {
+          "neighbors": 150,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.5,
+        "precision@10": 0.065723,
+        "recall@10": 0.149032,
+        "ndcg@10": 0.125121,
+        "hit_rate@10": 0.284677,
+        "catalog_coverage": 0.806903
+      },
+      {
+        "fit": {
+          "neighbors": 150,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.7,
+        "precision@10": 0.066086,
+        "recall@10": 0.148779,
+        "ndcg@10": 0.127263,
+        "hit_rate@10": 0.290487,
+        "catalog_coverage": 0.7994
+      },
+      {
+        "fit": {
+          "neighbors": 150,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.85,
+        "precision@10": 0.066304,
+        "recall@10": 0.147555,
+        "ndcg@10": 0.126731,
+        "hit_rate@10": 0.291939,
+        "catalog_coverage": 0.789895
+      },
+      {
+        "fit": {
+          "neighbors": 150,
+          "shrinkage": 5,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.95,
+        "precision@10": 0.066739,
+        "recall@10": 0.145183,
+        "ndcg@10": 0.125711,
+        "hit_rate@10": 0.28976,
+        "catalog_coverage": 0.782891
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 20,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.5,
+        "precision@10": 0.066231,
+        "recall@10": 0.151367,
+        "ndcg@10": 0.125237,
+        "hit_rate@10": 0.288308,
+        "catalog_coverage": 0.802901
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 20,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.7,
+        "precision@10": 0.065868,
+        "recall@10": 0.148825,
+        "ndcg@10": 0.126316,
+        "hit_rate@10": 0.286855,
+        "catalog_coverage": 0.77989
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 20,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.85,
+        "precision@10": 0.066376,
+        "recall@10": 0.148969,
+        "ndcg@10": 0.125946,
+        "hit_rate@10": 0.288308,
+        "catalog_coverage": 0.766883
+      },
+      {
+        "fit": {
+          "neighbors": 100,
+          "shrinkage": 20,
+          "user_balance": 0.25
+        },
+        "hybrid_cf_weight": 0.95,
+        "precision@10": 0.066594,
+        "recall@10": 0.146698,
+        "ndcg@10": 0.125657,
+        "hit_rate@10": 0.286855,
+        "catalog_coverage": 0.757879
+      }
+    ]
+  },
+  "baseline_on_same_test": {
+    "test_users": 1154,
+    "test_unseen_items": 1671,
+    "train_vocabulary_target_coverage": 1.0,
+    "item_knn": {
+      "precision@10": 0.054506,
+      "recall@10": 0.13973,
+      "ndcg@10": 0.114844,
+      "hit_rate@10": 0.272097,
+      "catalog_coverage": 0.6555
+    },
+    "popularity_baseline": {
+      "precision@10": 0.011438,
+      "recall@10": 0.016371,
+      "ndcg@10": 0.019857,
+      "hit_rate@10": 0.045927,
+      "catalog_coverage": 0.0195
+    },
+    "content_based": {
+      "precision@10": 0.045407,
+      "recall@10": 0.127437,
+      "ndcg@10": 0.101629,
+      "hit_rate@10": 0.225303,
+      "catalog_coverage": 0.6755
+    },
+    "hybrid": {
+      "precision@10": 0.055286,
+      "recall@10": 0.144866,
+      "ndcg@10": 0.116993,
+      "hit_rate@10": 0.275563,
+      "catalog_coverage": 0.6925
+    }
+  },
+  "evaluation": {
+    "test_users": 1154,
+    "test_unseen_items": 1671,
+    "train_vocabulary_target_coverage": 1.0,
+    "item_knn": {
+      "precision@10": 0.055546,
+      "recall@10": 0.145172,
+      "ndcg@10": 0.118809,
+      "hit_rate@10": 0.282496,
+      "catalog_coverage": 0.689
+    },
+    "popularity_baseline": {
+      "precision@10": 0.011438,
+      "recall@10": 0.016371,
+      "ndcg@10": 0.019857,
+      "hit_rate@10": 0.045927,
+      "catalog_coverage": 0.0195
+    },
+    "content_based": {
+      "precision@10": 0.045407,
+      "recall@10": 0.127437,
+      "ndcg@10": 0.101629,
+      "hit_rate@10": 0.225303,
+      "catalog_coverage": 0.6755
+    },
+    "hybrid": {
+      "precision@10": 0.054766,
+      "recall@10": 0.147921,
+      "ndcg@10": 0.119228,
+      "hit_rate@10": 0.279029,
+      "catalog_coverage": 0.711
+    }
+  },
+  "limitations": [
+    "Small non-representative sample; language/genre coverage is not guaranteed",
+    "Metadata is community supplied",
+    "Unknown users/items need a cold-start fallback",
+    "Not a model trained on this app's Spotify history"
+  ],
+  "catalog_expansion": {
+    "protocol": "Hash-holdout of about 20% of training track IDs; same historical profiles, seen-item exclusions and test targets in both runs",
+    "initial_catalog": 1605,
+    "metadata_only_catalog": 395,
+    "limitation": "All withheld items are made available from verified input metadata; live lookup coverage and latency are not simulated",
+    "baseline": {
+      "test_users": 1154,
+      "test_unseen_items": 1671,
+      "train_vocabulary_target_coverage": 0.805506,
+      "hybrid": {
+        "precision@10": 0.048094,
+        "recall@10": 0.123908,
+        "ndcg@10": 0.102592,
+        "hit_rate@10": 0.254766,
+        "catalog_coverage": 0.778816,
+        "mean_metadata_only_in_top10": 0.0
+      }
+    },
+    "with_metadata": {
+      "test_users": 1154,
+      "test_unseen_items": 1671,
+      "train_vocabulary_target_coverage": 1.0,
+      "hybrid": {
+        "precision@10": 0.050347,
+        "recall@10": 0.132855,
+        "ndcg@10": 0.106601,
+        "hit_rate@10": 0.259099,
+        "catalog_coverage": 0.672,
+        "mean_metadata_only_in_top10": 0.174177
+      }
+    }
+  }
+}

@@ -18,23 +18,23 @@ function AuthProvider({ children, queryClient }: { children: ReactNode; queryCli
   useEffect(() => {
     if (!client) return;
     let active = true;
+    const clearPreviousAccount = (id: string | null) => {
+      if (previousUserId.current === id) return;
+      queryClient.removeQueries({ predicate: query => query.queryKey[0] !== "home-collection" });
+      queryClient.getMutationCache().clear();
+      previousUserId.current = id;
+    };
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       const nextUser = session?.user ?? null;
-      if (previousUserId.current !== nextUser?.id) {
-        queryClient.clear(); // Không hiển thị cache riêng tư của tài khoản trước.
-        previousUserId.current = nextUser?.id ?? null;
-      }
+      clearPreviousAccount(nextUser?.id ?? null);
       setUser(nextUser);
       setLoading(false);
     });
     // Khởi tạo session. Token trong localStorage chỉ phục vụ UI; truy cập DB vẫn do RLS kiểm tra.
     void client.auth.getUser().then(({ data }) => {
       if (!active) return;
-      if (previousUserId.current !== data.user?.id) {
-        queryClient.clear();
-        previousUserId.current = data.user?.id ?? null;
-      }
+      clearPreviousAccount(data.user?.id ?? null);
       setUser(data.user);
       setLoading(false);
     }).catch(() => {

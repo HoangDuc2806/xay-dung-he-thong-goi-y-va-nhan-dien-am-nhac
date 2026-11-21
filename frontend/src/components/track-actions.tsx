@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Heart, ListPlus, LoaderCircle } from "lucide-react";
+import { Heart, ListPlus, ListEnd, LoaderCircle } from "lucide-react";
+import { useSpotifyPlayer } from "@/components/spotify-player-provider";
 import type { SpotifyTrack } from "@/lib/api";
 import { useAuth } from "@/components/providers";
 import { addPlaylistTrack, errorMessage, favoriteKey, type PlaylistSummary } from "@/lib/library-api";
@@ -219,7 +220,20 @@ function AddToPlaylistButton({ track, notify }: { track: SpotifyTrack; notify: (
 }
 
 /** Nút Yêu thích + Thêm vào playlist cho một thẻ bài hát Spotify. */
-export function TrackActions({ track }: { track: SpotifyTrack }) {
+export function TrackActions({ track, queueOnly = false }: { track: SpotifyTrack; queueOnly?: boolean }) {
+  const { enqueue } = useSpotifyPlayer();
+  const [adding, setAdding] = useState(false);
+  async function queueTrack() {
+    setAdding(true);
+    try {
+      await enqueue(track.uri);
+      notify({ kind: "ok", text: `Đã thêm “${track.name}” vào danh sách chờ.` });
+    } catch (error) {
+      notify({ kind: "error", text: errorMessage(error, "Không thêm được vào danh sách chờ.") });
+    } finally {
+      setAdding(false);
+    }
+  }
   const [notice, setNotice] = useState<Notice | null>(null);
   const timer = useRef<number | null>(null);
 
@@ -238,8 +252,12 @@ export function TrackActions({ track }: { track: SpotifyTrack }) {
 
   return (
     <>
-      <FavoriteButton track={track} notify={notify} />
-      <AddToPlaylistButton track={track} notify={notify} />
+      {!queueOnly && <FavoriteButton track={track} notify={notify} />}
+      {!queueOnly && <AddToPlaylistButton track={track} notify={notify} />}
+      <button type="button" className={iconButton} disabled={adding} title="Thêm vào danh sách chờ"
+        aria-label={`Thêm ${track.name} vào danh sách chờ`} onClick={() => void queueTrack()}>
+        {adding ? <LoaderCircle size={16} className="animate-spin" /> : <ListEnd size={16} />}
+      </button>
       {notice && <Toast notice={notice} />}
     </>
   );

@@ -17,7 +17,7 @@ def make_app(settings: Settings | None = None):
         user=AuthenticatedUser(id=USER_ID, email="member@example.com"),
         access_token="user-access-token",
     )
-    app.dependency_overrides[get_settings] = lambda: settings or Settings(
+    app.dependency_overrides[get_settings] = lambda: settings or Settings(_env_file=None,
         supabase_url="https://example.supabase.co",
         supabase_publishable_key="publishable-key",
         acoustid_client_key="test-acoustid-key",
@@ -97,7 +97,7 @@ def test_identify_fallback_without_acoustid_key(monkeypatch):
     async def should_not_call_acoustid(*args, **kwargs):
         raise AssertionError("AcoustID not configured")
     monkeypatch.setattr(identify, "lookup_acoustid", should_not_call_acoustid)
-    settings = Settings(
+    settings = Settings(_env_file=None,
         supabase_url="https://example.supabase.co",
         supabase_publishable_key="publishable-key",
         acoustid_client_key="",
@@ -125,7 +125,7 @@ def test_identify_rejects_file_over_configured_size_limit(monkeypatch):
         raise AssertionError("fingerprinting should not run for oversized uploads")
 
     monkeypatch.setattr(identify, "generate_fingerprint", should_not_run)
-    settings = Settings(
+    settings = Settings(_env_file=None,
         supabase_url="https://example.supabase.co",
         supabase_publishable_key="publishable-key",
         acoustid_client_key="test-acoustid-key",

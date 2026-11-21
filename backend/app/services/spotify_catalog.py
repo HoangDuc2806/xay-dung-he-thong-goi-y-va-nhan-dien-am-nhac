@@ -76,18 +76,18 @@ def _normalise_track(item: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-async def search_spotify_tracks(query: str, limit: int, market: str, settings: Settings) -> list[dict[str, Any]]:
+async def search_spotify_tracks(query: str, limit: int, market: str, settings: Settings, *, offset:int=0) -> dict[str, Any]:
     """Search Spotify's public catalog. Credentials remain on the backend."""
     query = query.strip()
     if not query:
-        return []
+        return {"items": [], "next_offset": None, "total": 0}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             token = await _get_access_token(client, settings)
             response = await client.get(
                 "https://api.spotify.com/v1/search",
                 headers={"Authorization": f"Bearer {token}"},
-                params={"q": query, "type": "track", "limit": limit, "market": market},
+                params={"q": query, "type": "track", "limit": limit, "market": market, "offset": offset},
             )
     except HTTPException:
         raise
@@ -104,7 +104,14 @@ async def search_spotify_tracks(query: str, limit: int, market: str, settings: S
     if response.status_code != 200:
         raise HTTPException(status_code=503, detail="Spotify chưa thể trả kết quả tìm kiếm lúc này.")
     try:
-        items = response.json().get("tracks", {}).get("items", [])
+        page = response.json().get("tracks", {})
+        items = page.get("items", [])
+        if not isinstance(items, list):
+            raise ValueError("Expected a page of tracks")
     except (ValueError, TypeError, AttributeError):
         raise HTTPException(status_code=503, detail="Dữ liệu tìm kiếm từ Spotify không hợp lệ.")
-    return [track for item in items if isinstance(item, dict) if (track := _normalise_track(item)) is not None]
+    tracks = [track for item in items if isinstance(item, dict) if (track := _normalise_track(item)) is not None]
+    next_offset = offset + limit if page.get("next") and offset + limit <= 1000 else None
+    total = page.get("total")
+    return {"items": tracks, "next_offset": next_offset,
+            "total": total if isinstance(total,int) and total >= 0 else None}

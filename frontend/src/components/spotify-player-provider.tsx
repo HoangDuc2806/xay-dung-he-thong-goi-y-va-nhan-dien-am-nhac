@@ -13,6 +13,8 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SpotifyTrack } from "@/lib/api";
+import { playbackUris } from "@/lib/spotify-pages";
+import { addQueuedTrack } from "@/lib/playback-queue";
 import { hasSession, metaFromSdkTrack, recordHistory } from "@/lib/library-api";
 import { emptySession, nextListenStep, spotifyTrackIdFromUri, type ListenSession } from "@/lib/listen-tracker";
 import {
@@ -25,6 +27,7 @@ import {
 
 type CurrentTrack = {
   uri: string;
+  originalUri?: string;
   id?: string;
   name: string;
   artists: string[];
@@ -45,7 +48,12 @@ type SpotifyPlayerContextValue = {
   error: string;
   connectSpotify: (returnTo?: string) => void;
   disconnectSpotify: () => void;
-  playTrack: (track: SpotifyTrack) => Promise<void>;
+  playTrack: (track: SpotifyTrack, queue?: SpotifyTrack[]) => Promise<void>;
+  extendPlaybackQueue: (previous: SpotifyTrack[], expanded: SpotifyTrack[]) => void;
+  enqueue: (uri: string) => Promise<void>;
+  queueRevision: number;
+  canSkipNext: boolean;
+  canSkipPrevious: boolean;
   togglePlayback: () => Promise<void>;
   nextTrack: () => Promise<void>;
   previousTrack: () => Promise<void>;
@@ -110,6 +118,7 @@ function currentTrackFromState(
 
   return {
     uri: track.uri,
+    originalUri: track.linked_from?.uri ?? undefined,
     id: track.id,
     name: track.name,
     artists: track.artists?.map((artist) => artist.name) ?? [],
@@ -139,6 +148,14 @@ export function SpotifyPlayerProvider({
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.5);
   const [error, setError] = useState("");
+  const [queue, setQueue] = useState<SpotifyTrack[]>([]);
+  const [queueRevision, setQueueRevision] = useState(0);
+  const [nativeQueue, setNativeQueue] = useState(false);
+  const skipPending = useRef(false);
+  const queueIndex = queue.findIndex(track => track.uri === currentTrack?.uri || track.uri === currentTrack?.originalUri);
+  const extendPlaybackQueue = useCallback((previous: SpotifyTrack[], expanded: SpotifyTrack[]) => {
+    setQueue(current => current === previous ? expanded : current);
+  }, []);
 
   // Ghi lịch sử nghe khi Spotify xác nhận bài hát THỰC SỰ đang phát (xem lib/listen-tracker.ts).
   // Lỗi ghi lịch sử chỉ được log; không bao giờ ảnh hưởng đến trình phát.
@@ -428,6 +445,8 @@ export function SpotifyPlayerProvider({
     setAuthorized(false);
     setReady(false);
     setCurrentTrack(null);
+    setQueue([]);
+    setNativeQueue(false);
     setPaused(true);
     setPosition(0);
     setDuration(0);
@@ -435,7 +454,7 @@ export function SpotifyPlayerProvider({
   }, []);
 
   const playTrack = useCallback(
-    async (track: SpotifyTrack) => {
+    async (track: SpotifyTrack, list?: SpotifyTrack[]) => {
       if (!authorized) {
         throw new Error(
           "Hãy bấm Kết nối Spotify trước khi phát nhạc."
@@ -469,28 +488,20 @@ export function SpotifyPlayerProvider({
         "Content-Type": "application/json",
       };
 
-      const transferResponse = await fetch(
-        "https://api.spotify.com/v1/me/player",
-        {
+      if (!(await player.getCurrentState())) {
+        const transferResponse = await fetch("https://api.spotify.com/v1/me/player", {
           method: "PUT",
           headers,
-          body: JSON.stringify({
-            device_ids: [deviceId],
-            play: false,
-          }),
+          body: JSON.stringify({ device_ids: [deviceId], play: false }),
           cache: "no-store",
+        });
+        if (!transferResponse.ok) {
+          throw new Error(
+            transferResponse.status === 403
+              ? "Spotify từ chối quyền điều khiển phát nhạc. Hãy kiểm tra quyền tài khoản và Developer Dashboard."
+              : "Không chuyển được phát nhạc sang trình phát của website."
+          );
         }
-      );
-
-      if (
-        !transferResponse.ok &&
-        transferResponse.status !== 204
-      ) {
-        throw new Error(
-          transferResponse.status === 403
-            ? "Spotify từ chối quyền điều khiển phát nhạc. Hãy kiểm tra quyền tài khoản và Developer Dashboard."
-            : "Không chuyển được phát nhạc sang trình phát của website."
-        );
       }
 
       const playResponse = await fetch(
@@ -499,7 +510,7 @@ export function SpotifyPlayerProvider({
           method: "PUT",
           headers,
           body: JSON.stringify({
-            uris: [track.uri],
+            uris: playbackUris(track, list),
           }),
           cache: "no-store",
         }
@@ -529,6 +540,10 @@ export function SpotifyPlayerProvider({
         );
       }
 
+      setQueue(list ?? []);
+      setNativeQueue(false);
+      setPosition(0);
+      setDuration(track.duration_ms);
       setCurrentTrack({
         uri: track.uri,
         id: track.id,
@@ -551,13 +566,39 @@ export function SpotifyPlayerProvider({
     await playerRef.current.togglePlay();
   }, [currentTrack]);
 
-  const nextTrack = useCallback(async () => {
-    await playerRef.current?.nextTrack();
-  }, []);
+  const skipTrack = useCallback(async (direction: 1 | -1) => {
+    if (skipPending.current) return;
+    skipPending.current = true;
+    try {
+      if (queueIndex >= 0 && !nativeQueue) {
+        const target = queue[queueIndex + direction];
+        if (target) await playTrack(target, queue);
+      } else if (direction === 1) {
+        await playerRef.current?.nextTrack();
+      } else {
+        await playerRef.current?.previousTrack();
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Không chuyển được bài. Hãy thử lại.");
+    } finally {
+      skipPending.current = false;
+    }
+  }, [playTrack, queue, queueIndex, nativeQueue]);
 
-  const previousTrack = useCallback(async () => {
-    await playerRef.current?.previousTrack();
-  }, []);
+  const enqueue = useCallback(async (uri: string) => {
+    const device = deviceIdRef.current;
+    if (!authorized || !device || !currentTrack) {
+      throw new Error("Hãy phát một bài trên website trước khi thêm bài vào danh sách chờ.");
+    }
+    const token = await getValidSpotifyAccessToken();
+    if (!token) throw new Error("Phiên Spotify đã hết hạn. Hãy kết nối lại.");
+    await addQueuedTrack(token, device, uri);
+    setNativeQueue(true);
+    setQueueRevision(value => value + 1);
+  }, [authorized, currentTrack]);
+
+  const nextTrack = useCallback(() => skipTrack(1), [skipTrack]);
+  const previousTrack = useCallback(() => skipTrack(-1), [skipTrack]);
 
   // Tua đến vị trí tính bằng mili giây.
   const seekTo = useCallback(
@@ -624,6 +665,11 @@ export function SpotifyPlayerProvider({
       connectSpotify,
       disconnectSpotify,
       playTrack,
+      extendPlaybackQueue,
+      enqueue,
+      queueRevision,
+      canSkipNext: nativeQueue || queueIndex < 0 || queueIndex < queue.length - 1,
+      canSkipPrevious: nativeQueue || queueIndex !== 0,
       togglePlayback,
       nextTrack,
       previousTrack,
@@ -642,6 +688,12 @@ export function SpotifyPlayerProvider({
       connectSpotify,
       disconnectSpotify,
       playTrack,
+      extendPlaybackQueue,
+      queueIndex,
+      queue.length,
+      enqueue,
+      queueRevision,
+      nativeQueue,
       togglePlayback,
       nextTrack,
       previousTrack,

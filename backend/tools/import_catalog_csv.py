@@ -22,7 +22,9 @@ def normal(row):
     url=nonempty(row.get("source_url"),"source_url")
     if not re.match(r"^https://[A-Za-z0-9.-]+/",url):raise ValueError("source_url must be an HTTPS page")
     license_name=nonempty(row.get("source_license"),"source_license")
-    track_id=uuid.uuid5(uuid.NAMESPACE_URL,url+"|"+title+"|"+artist)
+    # Trusted administrator CSVs from the trained model use the same stable ID
+    # as its neighbour graph. Never expose this importer as a public upload route.
+    track_id=uuid.UUID(row["id"]) if row.get("id") else uuid.uuid5(uuid.NAMESPACE_URL,url+"|"+title+"|"+artist)
     return (str(track_id),title,artist,row.get("album") or None,
             int(row["release_year"]) if row.get("release_year") else None,
             split(row.get("genres")),split(row.get("moods")),split(row.get("tags")),

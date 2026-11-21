@@ -11,6 +11,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { useSpotifyPlayer } from "@/components/spotify-player-provider";
+import { PlaybackQueue } from "./playback-queue";
 
 function formatTime(milliseconds: number) {
   const seconds = Math.floor(Math.max(0, milliseconds) / 1000);
@@ -33,6 +34,8 @@ export function PlayerBar() {
     togglePlayback,
     nextTrack,
     previousTrack,
+    canSkipNext,
+    canSkipPrevious,
     seekTo,
     setVolume,
   } = useSpotifyPlayer();
@@ -66,32 +69,32 @@ export function PlayerBar() {
     <div
       role="region"
       aria-label="Trình phát Spotify"
-      className="fixed inset-x-0 bottom-0 z-30 flex min-h-16 items-center gap-3 border-t border-ink-700 bg-ink-900 px-3 py-2 sm:gap-4 sm:px-4"
+      className="player-shell fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-white/[0.07] px-4 py-3 sm:gap-6 md:px-7"
     >
-      <div className="flex min-w-0 flex-[1.2] items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3 md:w-[30%] md:flex-none">
         {currentTrack?.albumImageUrl ? (
           <img
             src={currentTrack.albumImageUrl}
             alt={`Ảnh bìa ${currentTrack.albumName || currentTrack.name}`}
-            className="size-10 shrink-0 rounded object-cover"
+            className="size-11 shrink-0 rounded-xl object-cover shadow-lg md:size-12"
           />
         ) : (
-          <div className="grid size-10 shrink-0 place-items-center rounded bg-ink-700 text-mist-300">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/5 bg-gradient-to-br from-[#3b304c] to-[#22212b] text-lime-300 md:size-12">
             <Music2 size={18} aria-hidden />
           </div>
         )}
 
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
+          <p className="truncate text-xs font-semibold sm:text-[13px]">
             {currentTrack?.name ??
               (authorized
                 ? ready
-                  ? "Chưa có bài hát nào"
+                  ? "Một giai điệu đang chờ bạn"
                   : "Đang kết nối trình phát…"
                 : "Chưa kết nối Spotify")}
           </p>
 
-          <p className="truncate text-xs text-mist-300">
+          <p className="mt-1 truncate text-[10px] text-mist-400 sm:text-[11px]">
             {currentTrack
               ? currentTrack.artists.join(", ")
               : authorized
@@ -110,12 +113,12 @@ export function PlayerBar() {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col items-center gap-1">
-        <div className="flex items-center gap-1">
+      <div className="flex shrink-0 flex-col items-center gap-2 md:w-[40%]">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             className={btn}
-            disabled={!canControl}
+            disabled={!canControl || !canSkipPrevious}
             onClick={() =>
               void previousTrack().catch(() => undefined)
             }
@@ -126,20 +129,20 @@ export function PlayerBar() {
 
           <button
             type="button"
-            className={`${btn} bg-mist-100 text-ink-950 hover:bg-white`}
+            className="grid size-10 place-items-center rounded-full bg-lime-400 text-ink-950 transition hover:scale-105 hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={!canControl}
             onClick={() =>
               void togglePlayback().catch(() => undefined)
             }
             aria-label={paused ? "Phát nhạc" : "Tạm dừng"}
           >
-            {paused ? <Play size={18} /> : <Pause size={18} />}
+            {paused ? <Play size={17} fill="currentColor" className="ml-0.5" /> : <Pause size={17} fill="currentColor" />}
           </button>
 
           <button
             type="button"
             className={btn}
-            disabled={!canControl}
+            disabled={!canControl || !canSkipNext}
             onClick={() =>
               void nextTrack().catch(() => undefined)
             }
@@ -149,7 +152,7 @@ export function PlayerBar() {
           </button>
         </div>
 
-        <div className="hidden w-full max-w-md items-center gap-2 text-[10px] text-mist-400 sm:flex">
+        <div className="hidden w-full max-w-md items-center gap-3 text-[9px] text-mist-400 md:flex">
           <span className="tabular-nums">
             {formatTime(displayedPosition)}
           </span>
@@ -180,7 +183,8 @@ export function PlayerBar() {
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-2">
+      <PlaybackQueue />
+      <div className="hidden min-w-0 flex-1 items-center justify-end gap-4 md:flex">
         {!authorized ? (
           <button
             type="button"
@@ -211,7 +215,7 @@ export function PlayerBar() {
               onChange={(event) =>
                 setVolume(Number(event.target.value))
               }
-              className="w-20 accent-lime-400"
+              className="h-1 w-24 accent-lime-400"
             />
           </label>
         )}

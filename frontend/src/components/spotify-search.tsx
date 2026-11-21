@@ -55,7 +55,7 @@ export function SpotifySearch({ initialQuery }: { initialQuery: string }) {
       return;
     }
     try {
-      await playTrack(track);
+      await playTrack(track, tracks);
     } catch (caught) {
       setPlayError(caught instanceof Error ? caught.message : "Không thể phát bài hát trên Spotify.");
     }

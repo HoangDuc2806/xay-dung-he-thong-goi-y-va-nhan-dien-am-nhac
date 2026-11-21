@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
-            <main className="flex-1 px-4 pb-40 pt-8 md:px-8 md:pb-28">{children}</main>
+            <main id="main-content" className="app-main flex-1">{children}</main>
           </div>
         </div>
         <BottomNav />

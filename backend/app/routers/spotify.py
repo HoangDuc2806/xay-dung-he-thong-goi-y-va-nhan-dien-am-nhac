@@ -31,6 +31,10 @@ class SpotifySearchResponse(BaseModel):
     query: str
     market: str
     items: list[SpotifyTrack]
+    limit: int
+    offset: int
+    next_offset: int | None = None
+    total: int | None = None
 
 
 @router.get("/search", response_model=SpotifySearchResponse, summary="Search Spotify tracks")
@@ -38,14 +42,15 @@ async def search_tracks(
     q: str = Query(min_length=1, max_length=200, description="Tên bài hát, nghệ sĩ hoặc album"),
     limit: int = Query(default=10, ge=1, le=10),
     market: str = Query(default="VN", min_length=2, max_length=2, pattern="^[A-Z]{2}$"),
+    offset: int = Query(default=0, ge=0, le=1000),
     settings: Settings = Depends(get_settings),
 ) -> SpotifySearchResponse:
     query = q.strip()
     if not query:
         from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="Hãy nhập tên bài hát hoặc nghệ sĩ.")
-    items = await search_spotify_tracks(query, limit, market, settings)
-    return SpotifySearchResponse(query=query, market=market, items=items)
+    page = await search_spotify_tracks(query, limit, market, settings, offset=offset)
+    return SpotifySearchResponse(query=query, market=market, limit=limit, offset=offset, **page)
 
 
 @router.get("/now-playing")

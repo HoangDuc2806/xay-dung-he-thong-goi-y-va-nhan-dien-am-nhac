@@ -1,0 +1,54 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Đánh giá nhận diện âm nhạc — 21/11/2026</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:1200px;margin:40px auto;padding:0 24px;color:#172033}h1{line-height:1.2}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px;border:1px solid #ccd3de;text-align:left}th{background:#eef0fb}.scroll{overflow:auto}.note{background:#fff3d8;padding:16px;border-left:4px solid #ae7100}a{color:#5145af}@media print{body{font-size:12px;margin:0}table{font-size:10px}}</style>
+<h1>Đánh giá Landmark và MFCC + DTW</h1>
+<p>Chạy thực tế ngày 21/11/2026. Thời điểm ghi dữ liệu UTC: 2026-11-21T04:22:25.542287+00:00.</p>
+<p><b>13 bản nhạc nguồn, 10 bài tham chiếu, 1 bài ngoài kho dùng hiệu chỉnh và 2 bài ngoài kho dùng kiểm thử.</b>
+Mỗi thuật toán chạy 176 lượt kiểm thử gồm 144 đoạn từ 10 bài trong kho và 32 đoạn từ 2 bài ngoài kho.
+Đoạn dài 8 giây, ở nhiều vị trí, với bốn điều kiện: sạch, giảm âm lượng còn 30%, nhiễu 10 dB và nhiễu 0 dB.</p>
+<p>Ngưỡng chọn trên 33 lượt hiệu chỉnh riêng cho mỗi thuật toán. Không chọn ngưỡng bằng kết quả kiểm thử.
+Kho tham chiếu được lập chỉ mục tối đa 120 giây đầu mỗi bài. Cùng một bộ đoạn được dùng cho cả hai thuật toán.</p>
+<h2>Kết quả tổng hợp</h2><div class="scroll"><table>
+<colgroup><col/><col/><col/><col/><col/><col/><col/><col/><col/><col/><col/><col/></colgroup>
+<tr><th>method</th><th>queries</th><th>known_queries</th><th>correct</th><th>wrong_known</th><th>not_found</th><th>unknown_queries</th><th>false_accept</th><th>known_recall_percent</th><th>overall_accuracy_percent</th><th>latency_p50_ms</th><th>latency_p95_ms</th></tr>
+<tr><td>landmark</td><td>176</td><td>144</td><td>136</td><td>0</td><td>8</td><td>32</td><td>10</td><td>94.44</td><td>89.77</td><td>88.596</td><td>204.565</td></tr>
+<tr><td>mfcc_dtw</td><td>176</td><td>144</td><td>76</td><td>0</td><td>68</td><td>32</td><td>10</td><td>52.78</td><td>55.68</td><td>68.537</td><td>105.497</td></tr>
+</table></div>
+<p>correct: nhận đúng tên bài trong kho; wrong_known: trả nhầm bài khác trong kho; not_found: không trả kết quả cho bài trong kho;
+false_accept: trả tên bài trong kho cho đoạn thực tế nằm ngoài kho.</p>
+<p><b>Tỷ lệ nhận đúng bài trong kho</b> = correct / known_queries.
+<b>Độ chính xác tổng thể</b> = (nhận đúng bài trong kho + từ chối đúng bài ngoài kho) / queries.
+Thời gian p50/p95 đo bước trích đặc trưng và so khớp cục bộ, không bao gồm ghi âm, tải lên, mạng hoặc lập chỉ mục.</p>
+<div class="note"><b>Giới hạn:</b> 176 lượt không phải 176 bài khác nhau. Nhiều đoạn và biến thể cùng một bài có liên quan với nhau.
+Kết quả là kiểm thử âm thanh số với nhiễu mô phỏng, không phải bản thu micro thực tế.
+Bộ nhạc nhỏ, không đại diện cho toàn bộ Spotify. Chưa đo AudD hoặc AcoustID.
+Cả hai phương pháp nhận nhầm 10/32 đoạn ngoài kho (31,25%); cần chú ý khả năng từ chối bài lạ khi báo cáo.</div>
+<h2>Chi tiết từng bài tham chiếu</h2><div class="scroll"><table>
+<colgroup><col/><col/><col/><col/><col/></colgroup>
+<tr><th>method</th><th>title</th><th>queries</th><th>correct</th><th>percent</th></tr>
+<tr><td>landmark</td><td>Tranquility</td><td>16</td><td>10</td><td>62.5</td></tr>
+<tr><td>landmark</td><td>Ritual</td><td>16</td><td>16</td><td>100</td></tr>
+<tr><td>landmark</td><td>Broken Reality</td><td>16</td><td>14</td><td>87.5</td></tr>
+<tr><td>landmark</td><td>On the Passing of Time</td><td>16</td><td>16</td><td>100</td></tr>
+<tr><td>landmark</td><td>Parisian</td><td>8</td><td>8</td><td>100</td></tr>
+<tr><td>landmark</td><td>Thatched Villagers</td><td>16</td><td>16</td><td>100</td></tr>
+<tr><td>landmark</td><td>The Entertainer</td><td>16</td><td>16</td><td>100</td></tr>
+<tr><td>landmark</td><td>Swansong</td><td>16</td><td>16</td><td>100</td></tr>
+<tr><td>landmark</td><td>California Lullabye</td><td>16</td><td>16</td><td>100</td></tr>
+<tr><td>landmark</td><td>Guitar Solo in F# Minor</td><td>8</td><td>8</td><td>100</td></tr>
+<tr><td>mfcc_dtw</td><td>Tranquility</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>Ritual</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>Broken Reality</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>On the Passing of Time</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>Parisian</td><td>8</td><td>6</td><td>75</td></tr>
+<tr><td>mfcc_dtw</td><td>Thatched Villagers</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>The Entertainer</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>Swansong</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>California Lullabye</td><td>16</td><td>8</td><td>50</td></tr>
+<tr><td>mfcc_dtw</td><td>Guitar Solo in F# Minor</td><td>8</td><td>6</td><td>75</td></tr>
+</table></div>
+<h2>Cách chạy lại</h2><p>Từ thư mục backend:</p>
+<pre style="overflow:auto">.\.venv\Scripts\python.exe -m tools.evaluate_recognition --hard-calibration --manifest data/recognition/manifest.json --bundle artifacts/benchmark_20261121/local_recognition.npz --output artifacts/benchmark_20261121/results.json</pre>
+<p><a href="results.json">Chỉ số và kết quả theo điều kiện</a> · <a href="results.csv">Chi tiết từng lượt chạy</a> · <a href="../../data/recognition/ATTRIBUTION.md">Nguồn và giấy phép bộ nhạc</a></p>
+<p>Muốn đánh giá 500 bài khác nhau cần 500 danh tính bài có nhãn đúng và đoạn âm thanh tương ứng. Tạo 500 biến thể của 10 bài chỉ đánh giá được 500 lượt trên 10 bài.</p>
+</html>

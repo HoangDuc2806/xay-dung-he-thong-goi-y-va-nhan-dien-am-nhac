@@ -27,12 +27,13 @@ export type RecognizedTrack = {
   artists: string[];
   album: string | null;
   year: number | null;
-  score: number;
+  score: number | null;
+  spotify_url?: string | null;
   acoustid_id: string | null;
   musicbrainz_recording_id: string | null;
   musicbrainz_url: string | null;
   acoustid_url: string | null;
-  recognition_method?: "acoustid" | "mdvn_landmark";
+  recognition_method?: "acoustid" | "mdvn_landmark" | "audd" | "mfcc_dtw";
 };
 
 export type MusicRecognitionResponse = {
@@ -40,15 +41,47 @@ export type MusicRecognitionResponse = {
   message: string;
   duration_seconds: number;
   results: RecognizedTrack[];
+  warnings?: string[];
 };
 
-export async function identifyAudio(file: File, accessToken: string, signal?: AbortSignal): Promise<MusicRecognitionResponse> {
+export type RecognitionStatus = {
+  local_comparison_ready?: boolean;
+  mode: "hybrid" | "landmark" | "acoustid" | "audd";
+  algorithm: string;
+  tools: { ffmpeg: boolean; ffprobe: boolean; fpcalc: boolean };
+  acoustid_configured: boolean;
+  audd_configured: boolean;
+  catalog_available: boolean;
+  message: string;
+};
+
+export async function getRecognitionStatus(token: string): Promise<RecognitionStatus> {
+  const response = await fetch(`${API_URL}/api/identify/status`, {
+    headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+  });
+  if (!response.ok) throw new ApiError("Không kiểm tra được cấu hình nhận diện.", response.status);
+  return response.json();
+}
+
+export type LocalRecognitionTrack = {id:string;title:string;artist:string;source_url:string;license:string;license_url:string;duration_seconds:number};
+export async function listLocalRecognitionCatalog(token: string): Promise<{items:LocalRecognitionTrack[]}> {
+  const response=await fetch(`${API_URL}/api/identify/local-catalog`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+  if(!response.ok) throw new ApiError("Chưa đọc được kho thử nghiệm nội bộ.",response.status);
+  return response.json();
+}
+
+export type LocalComparisonResponse = {
+  duration_seconds: number;
+  results: { method: "landmark" | "mfcc_dtw"; track_id: string | null; track: RecognizedTrack | null; elapsed_ms: number }[];
+};
+
+async function uploadRecognition<T>(path: string, file: File, accessToken: string, signal?: AbortSignal): Promise<T> {
   const form = new FormData();
   form.append("file", file, file.name);
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}/api/identify`, {
+    response = await fetch(`${API_URL}/api/identify${path}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
       body: form,
@@ -64,7 +97,15 @@ export async function identifyAudio(file: File, accessToken: string, signal?: Ab
     const message = body?.error?.message ?? body?.detail ?? "Không thể nhận diện âm thanh.";
     throw new ApiError(message, response.status);
   }
-  return (await response.json()) as MusicRecognitionResponse;
+  return (await response.json()) as T;
+}
+
+export function identifyAudio(file: File, accessToken: string, signal?: AbortSignal, method: "configured" | "landmark" | "mfcc_dtw" = "configured") {
+  return uploadRecognition<MusicRecognitionResponse>(method === "configured" ? "" : `/local?method=${method}`, file, accessToken, signal);
+}
+
+export function compareLocalRecognition(file: File, accessToken: string) {
+  return uploadRecognition<LocalComparisonResponse>("/local/compare", file, accessToken);
 }
 
 
@@ -85,10 +126,14 @@ export type SpotifySearchResponse = {
   query: string;
   market: string;
   items: SpotifyTrack[];
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+  total: number | null;
 };
 
-export async function searchSpotifyTracks(query: string, signal?: AbortSignal): Promise<SpotifySearchResponse> {
-  const params = new URLSearchParams({ q: query, limit: "10", market: "VN" });
+export async function searchSpotifyTracks(query: string, signal?: AbortSignal, offset=0): Promise<SpotifySearchResponse> {
+  const params = new URLSearchParams({ q: query, limit: "10", market: "VN", offset: String(offset) });
   let response: Response;
   try {
     response = await fetch(`${API_URL}/api/spotify/search?${params.toString()}`, {

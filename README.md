@@ -1,5 +1,11 @@
 # Music Discovery Vietnam (Giai đoạn 1: khung dự án)
 
+**Nghiên cứu thuật toán cập nhật 19/11/2026:** đã bổ sung Content-based, Collaborative/Hybrid và so sánh Landmark với MFCC + DTW. Xem [đối chiếu yêu cầu của thầy](docs/DOI_CHIEU_YEU_CAU_GIANG_VIEN.md) và [báo cáo nghiên cứu, số liệu thực nghiệm](docs/BAO_CAO_NGHIEN_CUU_THUAT_TOAN.md). Các mục trạng thái giai đoạn đầu bên dưới là lịch sử.
+
+Hướng dẫn nhận diện bằng thuật toán fingerprint hiện hành: [docs/CHAY_NHAN_DIEN_FINGERPRINT.md](docs/CHAY_NHAN_DIEN_FINGERPRINT.md).
+
+Demo nhận diện nhạc từ loa điện thoại qua micro, dùng AudD và không cần tự nạp kho nhạc: [docs/DEMO_NHAN_DIEN_DIEN_THOAI.md](docs/DEMO_NHAN_DIEN_DIEN_THOAI.md).
+
 ## Trạng thái
 Đã làm và đã kiểm tra:
 - Backend FastAPI: `/api/health`, CORS theo biến môi trường, log JSON, định dạng lỗi thống nhất. `pytest`: 4 test đạt.
@@ -288,3 +294,7 @@ Tài liệu chính thức:
 ## Bản nâng cấp nhận diện & gợi ý (2026-11-13)
 
 Xem `docs/README_NANG_CAP_RECOGNITION_RECOMMENDATION.md` để chạy migration, seed MusicBrainz, tạo fingerprint hợp pháp và kiểm thử. Quảng cáo chưa bật.
+
+## Gợi ý học từ lượt nghe
+
+Đã có mô hình Item-KNN huấn luyện bằng dữ liệu ListenBrainz độc lập, hồ sơ từ phản hồi trong web và tùy chọn đọc lượt nghe ListenBrainz công khai. Xem [cách thử, tái tạo dataset và kết quả đánh giá](docs/GOI_Y_HOC_TU_LUOT_NGHE.md).

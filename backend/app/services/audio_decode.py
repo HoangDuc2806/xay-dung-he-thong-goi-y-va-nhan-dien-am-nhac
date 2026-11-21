@@ -6,7 +6,9 @@ from __future__ import annotations
 import asyncio
 import json
 import subprocess
+import wave
 from pathlib import Path
+import numpy as np
 
 SUPPORTED_SUFFIXES = {
     ".mp3", ".wav", ".wave", ".flac", ".ogg", ".oga", ".opus", ".webm",
@@ -26,6 +28,85 @@ class InvalidAudio(Exception):
 
 class AudioDurationExceeded(Exception):
     pass
+
+
+def prepare_local_pcm(source: Path, destination: Path, max_duration=16):
+    """Browser PCM16 WAV path for local research matchers; no external decoder."""
+    from app.services.mfcc_dtw import resample_audio
+    try:
+        with wave.open(str(source), "rb") as audio:
+            channels, rate = audio.getnchannels(), audio.getframerate()
+            if audio.getsampwidth()!=2 or channels not in (1,2) or not 8000<=rate<=96000 or audio.getcomptype()!="NONE":
+                raise InvalidAudio("Thử nghiệm nội bộ cần WAV PCM 16-bit mono/stereo.")
+            duration=audio.getnframes()/rate
+            if duration > max_duration:
+                raise AudioDurationExceeded(f"Thử nghiệm nội bộ nhận đoạn tối đa {max_duration} giây.")
+            frame_count=min(audio.getnframes(),15*rate)
+            data=audio.readframes(frame_count)
+            if len(data)!=frame_count*channels*2:
+                raise InvalidAudio("File WAV bị cắt hỏng.")
+        samples=np.frombuffer(data,dtype="<i2").astype(np.float32).reshape(-1,channels).mean(axis=1)/32768
+        samples=resample_audio(samples,rate)
+        with wave.open(str(destination),"wb") as audio:
+            audio.setnchannels(1);audio.setsampwidth(2);audio.setframerate(11025)
+            audio.writeframes(np.clip(samples*32768,-32768,32767).astype("<i2").tobytes())
+        return min(duration,15)
+    except (wave.Error,EOFError,OSError,ValueError) as exc:
+        raise InvalidAudio("Cần bản ghi WAV PCM hợp lệ.") from exc
+
+
+def prepare_cloud_wav(source: Path, destination: Path, *, max_duration: int = 1800, clip_seconds: int = 12) -> int:
+    """Validate browser PCM WAV and extract a bounded clip without FFmpeg.
+
+    This path is for the cloud recognizer; the local matcher still requires its
+    normalized 11025-Hz input. Reject truncated/unsupported WAV before API calls.
+    """
+    try:
+        with wave.open(str(source), "rb") as audio:
+            rate = audio.getframerate()
+            channels = audio.getnchannels()
+            if audio.getcomptype() != "NONE" or audio.getsampwidth() != 2 or channels not in (1, 2) or not 8000 <= rate <= 96000:
+                raise InvalidAudio("Cần file WAV PCM 16-bit, mono hoặc stereo.")
+            duration = audio.getnframes() / rate
+            if duration > max_duration:
+                raise AudioDurationExceeded("File âm thanh vượt giới hạn thời lượng.")
+            frame_count = audio.getnframes()
+            frames = min(frame_count, clip_seconds * rate)
+            # Scan a bounded prefix. A microphone often starts recording before
+            # the music begins. Preserve stereo and the provider's clip length.
+            scanned = min(frame_count, max(30, clip_seconds) * rate)
+            data = audio.readframes(scanned)
+            if not frames or len(data) != scanned * channels * 2:
+                raise InvalidAudio("File WAV đang trống hoặc bị cắt hỏng.")
+            samples = np.frombuffer(data, dtype="<i2").reshape(-1, channels)
+            if np.all(np.ptp(samples.astype(np.int32), axis=0) < 4):
+                raise InvalidAudio("Đoạn ghi âm gần như im lặng. Kiểm tra micro hoặc nguồn phát rồi ghi lại.")
+            start = _active_clip_start(samples, rate, frames)
+            data = data[start * channels * 2:(start + frames) * channels * 2]
+        with wave.open(str(destination), "wb") as output:
+            output.setnchannels(channels)
+            output.setsampwidth(2)
+            output.setframerate(rate)
+            output.writeframes(data)
+        return int(round(frames / rate))
+    except (wave.Error, EOFError, OSError) as exc:
+        raise InvalidAudio("Không đọc được file WAV. Hãy ghi âm lại hoặc tải tệp âm thanh hợp lệ.") from exc
+
+
+def _active_clip_start(samples, rate, frames):
+    if len(samples) <= frames:
+        return 0
+    block = rate // 4
+    whole = len(samples) // block
+    blocks = samples[:whole * block].reshape(whole, block, samples.shape[1])
+    # Variance ignores DC. Saturating the weights prevents a single loud
+    # transient from outweighing a sustained audible passage.
+    rms = np.sqrt(blocks.var(axis=1, dtype=np.float32).mean(axis=1))
+    typical = float(np.percentile(rms, 75))
+    activity = np.minimum(rms / max(8.0, typical * 0.18), 1.0)
+    windows = np.convolve(activity, np.ones(frames // block), mode="valid")
+    options = windows[:(len(samples) - frames) // block + 1]
+    return int(np.argmax(options)) * block
 
 def decode_audio(
     source: Path, destination: Path, *, ffmpeg: str = "ffmpeg",

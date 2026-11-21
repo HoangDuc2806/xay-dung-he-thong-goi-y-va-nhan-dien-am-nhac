@@ -1,5 +1,8 @@
 # Music Discovery Vietnam – triển khai module nhận diện, gợi ý và quảng cáo
 
+> Hướng dẫn nhận diện hiện hành: [CHAY_NHAN_DIEN_FINGERPRINT.md](CHAY_NHAN_DIEN_FINGERPRINT.md).
+> Các mô tả v1 bên dưới là lịch sử triển khai; code hiện dùng mdvn-landmark-v2 và bảng music_fingerprint_points.
+
 ## Đã triển khai trong source
 
 1. **Recognition fallback:** giữ Chromaprint + AcoustID làm luồng chính. Khi thiếu `fpcalc`, AcoustID lỗi hoặc không có kết quả, backend thử fingerprint dự phòng `mdvn-landmark-v1` bằng FFmpeg + NumPy và so khớp với `music_catalog.fingerprint_hashes`.
@@ -23,7 +26,7 @@ cd backend
 python scripts_fingerprint_catalog.py /path/to/licensed-audio-file.mp3
 ```
 
-Lấy mảng `hashes[].hash` từ JSON kết quả và lưu vào `music_catalog.fingerprint_hashes`. Fingerprint dự phòng chỉ so khớp với catalog đã được fingerprint bằng cùng phiên bản thuật toán; nó không phải fingerprint AcoustID và không thể nhận diện toàn bộ bài hát trên Internet.
+Script hiện xuất `points` gồm `hash` và `offset_ms`. Để nạp đúng bảng `music_fingerprint_points`, dùng `tools/index_licensed_audio.py` theo hướng dẫn hiện hành ở đầu tài liệu. Không ghi kết quả v2 vào cột `music_catalog.fingerprint_hashes` cũ. Thuật toán chỉ so khớp với catalog đã được lập chỉ mục; không phải fingerprint AcoustID và không thể nhận diện toàn bộ bài hát trên Internet.
 
 ## Giới hạn và lưu ý
 

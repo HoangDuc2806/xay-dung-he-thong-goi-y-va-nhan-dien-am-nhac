@@ -1,0 +1,234 @@
+{
+  "generated_at": "2026-11-20T17:37:38.421854+00:00",
+  "dataset": "13 openly licensed recordings from Wikimedia Commons",
+  "reference_tracks": 10,
+  "max_reference_seconds": 120.0,
+  "index_seconds": 6.274,
+  "index_bytes": 9142209,
+  "protocol": "8-second excerpts; calibration at 3.137s; disjoint tests at 20.319/30.173s and after 60s when long enough; distinct unknown recordings; seed=20261119",
+  "threshold_selection": "Maximize calibration balanced known-recall/unknown-rejection; test never used to select threshold",
+  "landmark_query_points": 700,
+  "calibration_conditions": [
+    "clean",
+    "noise_10db",
+    "noise_0db"
+  ],
+  "calibration": {
+    "landmark": {
+      "queries": 33,
+      "known_queries": 30,
+      "unknown_queries": 3,
+      "top1_accuracy": 0.939394,
+      "known_recall": 0.933333,
+      "precision": 1.0,
+      "unknown_false_accept_rate": 0.0,
+      "latency_ms_p50": 83.455,
+      "latency_ms_p95": 196.879
+    },
+    "mfcc_dtw": {
+      "queries": 33,
+      "known_queries": 30,
+      "unknown_queries": 3,
+      "top1_accuracy": 0.484848,
+      "known_recall": 0.433333,
+      "precision": 1.0,
+      "unknown_false_accept_rate": 0.0,
+      "latency_ms_p50": 102.505,
+      "latency_ms_p95": 197.19
+    }
+  },
+  "results": {
+    "landmark": {
+      "threshold": 0.06928571428571428,
+      "queries": 176,
+      "known_queries": 144,
+      "unknown_queries": 32,
+      "top1_accuracy": 0.897727,
+      "known_recall": 0.944444,
+      "precision": 0.931507,
+      "unknown_false_accept_rate": 0.3125,
+      "latency_ms_p50": 82.747,
+      "latency_ms_p95": 199.808,
+      "conditions": {
+        "clean": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.931818,
+          "known_recall": 1.0,
+          "precision": 0.923077,
+          "unknown_false_accept_rate": 0.375,
+          "latency_ms_p50": 92.99,
+          "latency_ms_p95": 234.958
+        },
+        "gain_03": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.931818,
+          "known_recall": 1.0,
+          "precision": 0.923077,
+          "unknown_false_accept_rate": 0.375,
+          "latency_ms_p50": 97.045,
+          "latency_ms_p95": 210.404
+        },
+        "noise_0db": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.840909,
+          "known_recall": 0.833333,
+          "precision": 0.967742,
+          "unknown_false_accept_rate": 0.125,
+          "latency_ms_p50": 67.898,
+          "latency_ms_p95": 126.139
+        },
+        "noise_10db": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.886364,
+          "known_recall": 0.944444,
+          "precision": 0.918919,
+          "unknown_false_accept_rate": 0.375,
+          "latency_ms_p50": 83.756,
+          "latency_ms_p95": 158.476
+        }
+      },
+      "positions": {
+        "early": {
+          "queries": 96,
+          "known_queries": 80,
+          "unknown_queries": 16,
+          "top1_accuracy": 0.875,
+          "known_recall": 0.9375,
+          "precision": 0.914634,
+          "unknown_false_accept_rate": 0.4375,
+          "latency_ms_p50": 80.302,
+          "latency_ms_p95": 178.768
+        },
+        "late": {
+          "queries": 40,
+          "known_queries": 32,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.975,
+          "known_recall": 0.96875,
+          "precision": 1.0,
+          "unknown_false_accept_rate": 0.0,
+          "latency_ms_p50": 92.649,
+          "latency_ms_p95": 222.546
+        },
+        "middle": {
+          "queries": 40,
+          "known_queries": 32,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.875,
+          "known_recall": 0.9375,
+          "precision": 0.909091,
+          "unknown_false_accept_rate": 0.375,
+          "latency_ms_p50": 86.537,
+          "latency_ms_p95": 216.172
+        }
+      }
+    },
+    "mfcc_dtw": {
+      "threshold": 0.9113168679177761,
+      "queries": 176,
+      "known_queries": 144,
+      "unknown_queries": 32,
+      "top1_accuracy": 0.556818,
+      "known_recall": 0.527778,
+      "precision": 0.883721,
+      "unknown_false_accept_rate": 0.3125,
+      "latency_ms_p50": 94.623,
+      "latency_ms_p95": 133.789,
+      "conditions": {
+        "clean": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.886364,
+          "known_recall": 1.0,
+          "precision": 0.878049,
+          "unknown_false_accept_rate": 0.625,
+          "latency_ms_p50": 86.171,
+          "latency_ms_p95": 138.415
+        },
+        "gain_03": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.886364,
+          "known_recall": 1.0,
+          "precision": 0.878049,
+          "unknown_false_accept_rate": 0.625,
+          "latency_ms_p50": 88.267,
+          "latency_ms_p95": 127.736
+        },
+        "noise_0db": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.181818,
+          "known_recall": 0.0,
+          "precision": 0.0,
+          "unknown_false_accept_rate": 0.0,
+          "latency_ms_p50": 97.499,
+          "latency_ms_p95": 128.549
+        },
+        "noise_10db": {
+          "queries": 44,
+          "known_queries": 36,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.272727,
+          "known_recall": 0.111111,
+          "precision": 1.0,
+          "unknown_false_accept_rate": 0.0,
+          "latency_ms_p50": 97.028,
+          "latency_ms_p95": 125.667
+        }
+      },
+      "positions": {
+        "early": {
+          "queries": 96,
+          "known_queries": 80,
+          "unknown_queries": 16,
+          "top1_accuracy": 0.583333,
+          "known_recall": 0.55,
+          "precision": 0.916667,
+          "unknown_false_accept_rate": 0.25,
+          "latency_ms_p50": 95.719,
+          "latency_ms_p95": 139.349
+        },
+        "late": {
+          "queries": 40,
+          "known_queries": 32,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.55,
+          "known_recall": 0.5,
+          "precision": 0.888889,
+          "unknown_false_accept_rate": 0.25,
+          "latency_ms_p50": 92.486,
+          "latency_ms_p95": 127.126
+        },
+        "middle": {
+          "queries": 40,
+          "known_queries": 32,
+          "unknown_queries": 8,
+          "top1_accuracy": 0.5,
+          "known_recall": 0.5,
+          "precision": 0.8,
+          "unknown_false_accept_rate": 0.5,
+          "latency_ms_p50": 87.669,
+          "latency_ms_p95": 123.574
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Small open catalog; not representative of Spotify or all genres",
+    "Controlled digital noise/gain, not physical microphone recordings",
+    "No learned neural audio model; MFCC-DTW is a signal-processing baseline",
+    "References are indexed for at most the first 120 seconds"
+  ]
+}

@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ExternalLink,
   LoaderCircle,
   Music2,
-  PlayCircle,
   RefreshCw,
   Search,
-  Sparkles,
+  Play,
 } from "lucide-react";
-import { ApiError, searchSpotifyTracks, type SpotifyTrack } from "@/lib/api";
+import { ApiError, type SpotifyTrack } from "@/lib/api";
+import { loadSpotifyBatch, mergeSpotifyTracks, type SpotifyBatch } from "@/lib/spotify-pages";
 import { useSpotifyPlayer } from "@/components/spotify-player-provider";
 import { TrackActions } from "@/components/track-actions";
 
@@ -58,6 +58,10 @@ const CATEGORIES: MusicCategory[] = [
     query: "global pop hits",
     description: "Pop quốc tế và các bản hit phổ biến.",
   },
+  { id: "rnb", label: "R&B", query: "genre:r&b", description: "Khám phá các bài R&B trên Spotify." },
+  { id: "rock", label: "Rock", query: "genre:rock", description: "Khám phá các bài rock trên Spotify." },
+  { id: "jazz", label: "Jazz", query: "genre:jazz", description: "Khám phá các bản jazz trên Spotify." },
+  { id: "electronic", label: "Electronic", query: "genre:electronic", description: "Khám phá nhạc điện tử trên Spotify." },
 ];
 
 function formatDuration(durationMs: number) {
@@ -72,37 +76,57 @@ export function MusicLibrary() {
   const [error, setError] = useState("");
   const [playError, setPlayError] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
-  const cacheRef = useRef(new Map<string, SpotifyTrack[]>());
+  const [nextOffset, setNextOffset] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState("");
+  const cacheRef = useRef(new Map<string, SpotifyBatch>());
+  const moreControllerRef = useRef<AbortController | null>(null);
+  const morePendingRef = useRef(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     authorized,
     ready,
     currentTrack,
     playTrack,
+    extendPlaybackQueue,
     connectSpotify,
   } = useSpotifyPlayer();
 
   const category = CATEGORIES.find((item) => item.id === categoryId) ?? CATEGORIES[0]!;
+  const activeQueryRef = useRef(category.query);
+  activeQueryRef.current = category.query;
 
   useEffect(() => {
+    const controller = new AbortController();
+    const cleanup = () => { controller.abort(); moreControllerRef.current?.abort(); };
+    morePendingRef.current = false;
+    setLoadingMore(false);
+    setMoreError("");
+    setPlayError("");
     const cached = cacheRef.current.get(category.query);
     if (cached) {
-      setTracks(cached);
+      setTracks(cached.items);
+      setNextOffset(cached.next_offset);
+      setMoreError(cached.warning);
       setLoading(false);
       setError("");
-      return;
+      return cleanup;
     }
 
-    const controller = new AbortController();
+    setTracks([]);
+    setNextOffset(null);
     setLoading(true);
     setError("");
     setPlayError("");
 
-    void searchSpotifyTracks(category.query, controller.signal)
+    void loadSpotifyBatch(category.query, controller.signal)
       .then((response) => {
         if (controller.signal.aborted) return;
-        cacheRef.current.set(category.query, response.items);
+        cacheRef.current.set(category.query, response);
         setTracks(response.items);
+        setNextOffset(response.next_offset);
+        setMoreError(response.warning);
       })
       .catch((caught: unknown) => {
         if (controller.signal.aborted) return;
@@ -117,8 +141,48 @@ export function MusicLibrary() {
         if (!controller.signal.aborted) setLoading(false);
       });
 
-    return () => controller.abort();
+    return cleanup;
   }, [category.query, reloadVersion]);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset === null || morePendingRef.current || loading) return;
+    const query = category.query;
+    const controller = new AbortController();
+    moreControllerRef.current = controller;
+    morePendingRef.current = true;
+    setLoadingMore(true);
+    setMoreError("");
+    try {
+      const result = await loadSpotifyBatch(query, controller.signal, nextOffset);
+      if (controller.signal.aborted || activeQueryRef.current !== query) return;
+      const previous = cacheRef.current.get(query)?.items ?? tracks;
+      const merged = mergeSpotifyTracks(previous, result.items);
+      extendPlaybackQueue(previous, merged);
+      cacheRef.current.set(query, { ...result, items: merged });
+      setTracks(merged);
+      setNextOffset(result.next_offset);
+      setMoreError(result.warning);
+    } catch (caught) {
+      if (!controller.signal.aborted && activeQueryRef.current === query) {
+        setMoreError(caught instanceof Error ? caught.message : "Không tải thêm được bài hát. Hãy thử lại.");
+      }
+    } finally {
+      if (!controller.signal.aborted && activeQueryRef.current === query) {
+        morePendingRef.current = false;
+        setLoadingMore(false);
+      }
+    }
+  }, [nextOffset, loading, category.query, tracks, extendPlaybackQueue]);
+
+  useEffect(() => {
+    const button = moreButtonRef.current;
+    if (!button || loading || loadingMore || moreError || !window.IntersectionObserver) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) void loadMore();
+    }, { rootMargin: "240px" });
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, [loading, loadingMore, moreError, loadMore]);
 
   async function handlePlay(track: SpotifyTrack) {
     setPlayError("");
@@ -134,7 +198,7 @@ export function MusicLibrary() {
     }
 
     try {
-      await playTrack(track);
+      await playTrack(track, tracks);
     } catch (caught: unknown) {
       setPlayError(
         caught instanceof Error
@@ -145,21 +209,20 @@ export function MusicLibrary() {
   }
 
   function reloadCategory() {
+    moreControllerRef.current?.abort();
     cacheRef.current.delete(category.query);
     setReloadVersion((value) => value + 1);
   }
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-ink-700 bg-ink-900 p-4 sm:p-5">
+    <div id="music-catalog" className="space-y-5 scroll-mt-28">
+      <section className="mb-2">
         <div className="flex items-start gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime-400/10 text-lime-400">
-            <Sparkles size={21} aria-hidden />
-          </div>
           <div className="min-w-0 flex-1">
-            <h2 className="font-semibold">Khám phá âm nhạc</h2>
-            <p className="mt-1 text-sm leading-relaxed text-mist-300">
-              {category.description} Chọn một thể loại bên dưới để tải kết quả trực tiếp từ Spotify.
+            <p className="eyebrow mb-2 text-lime-400">Tìm giai điệu của bạn</p>
+            <h2 className="text-[23px] font-semibold tracking-tight">Cho tâm trạng hôm nay</h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-mist-300">
+              {category.description}
             </p>
             <p className="mt-2 text-xs text-mist-400">
               {authorized
@@ -171,7 +234,7 @@ export function MusicLibrary() {
           </div>
           <a
             href="/search"
-            className="hidden shrink-0 items-center gap-2 rounded-xl border border-ink-600 px-3 py-2 text-xs font-semibold hover:border-lime-500 sm:inline-flex"
+            className="hidden shrink-0 items-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-xs font-medium text-mist-300 hover:border-lime-500 hover:text-lime-300 sm:inline-flex"
           >
             <Search size={14} /> Tìm kiếm
           </a>
@@ -185,10 +248,10 @@ export function MusicLibrary() {
             type="button"
             aria-pressed={categoryId === item.id}
             onClick={() => setCategoryId(item.id)}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+            className={`rounded-full border px-4 py-2.5 text-xs font-medium transition ${
               categoryId === item.id
                 ? "border-lime-400 bg-lime-400 text-ink-950"
-                : "border-ink-700 bg-ink-900 text-mist-300 hover:border-ink-500 hover:text-mist-100"
+                : "border-white/[0.06] bg-ink-900/70 text-mist-300 hover:border-ink-500 hover:text-mist-100"
             }`}
           >
             {item.label}
@@ -197,7 +260,7 @@ export function MusicLibrary() {
         <button
           type="button"
           onClick={reloadCategory}
-          disabled={loading}
+          disabled={loading || loadingMore}
           className="ml-auto inline-flex items-center gap-2 rounded-full border border-ink-700 px-3 py-2 text-sm text-mist-300 hover:border-ink-500 disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -239,15 +302,15 @@ export function MusicLibrary() {
         <section aria-label={`Bài hát: ${category.label}`}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-semibold">{category.label}</h3>
-              <p className="text-xs text-mist-400">{tracks.length} kết quả · Danh mục Spotify Việt Nam</p>
+              <h3 className="text-base font-semibold">{category.label} <span className="ml-2 text-xs font-normal text-mist-400">{tracks.length} bài hát</span></h3>
+              <p className="mt-1 text-xs text-mist-400">Khám phá từ danh mục Spotify</p>
             </div>
             <a href="https://open.spotify.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-semibold text-mist-300 hover:text-lime-400">
               Spotify <ExternalLink size={13} />
             </a>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-4">
             {tracks.map((track) => {
               const isCurrentTrack = currentTrack?.uri === track.uri;
               const releaseYear = track.release_date?.slice(0, 4);
@@ -255,54 +318,44 @@ export function MusicLibrary() {
               return (
                 <article
                   key={track.id}
-                  className={`overflow-hidden rounded-2xl border bg-ink-900 transition ${
-                    isCurrentTrack ? "border-lime-500" : "border-ink-700 hover:border-ink-500"
-                  }`}
+                  className={`catalog-card group ${isCurrentTrack ? "is-current" : ""}`}
                 >
-                  <div className="flex gap-3 p-3">
+                  <div className="cover-wrap">
                     {track.album_image_url ? (
                       <img
                         src={track.album_image_url}
                         alt={`Ảnh bìa ${track.album_name ?? track.name}`}
-                        className="size-20 shrink-0 rounded-xl object-cover"
                         loading="lazy"
+                        width={300}
+                        height={300}
                       />
                     ) : (
-                      <div className="grid size-20 shrink-0 place-items-center rounded-xl bg-ink-800 text-mist-400">
-                        <Music2 size={25} aria-hidden />
+                      <div className="grid h-full place-items-center bg-gradient-to-br from-[#3b304c] to-[#24232d] text-lime-300/60">
+                        <Music2 size={48} strokeWidth={1} aria-hidden />
                       </div>
                     )}
-                    <div className="min-w-0 flex-1">
-                      <h4 className="line-clamp-2 font-semibold leading-snug">{track.name}</h4>
-                      <p className="mt-1 line-clamp-2 text-sm text-mist-300">
+                    <button type="button" onClick={() => void handlePlay(track)} className="cover-play"
+                      aria-label={`${!authorized ? "Kết nối Spotify để phát" : "Phát"} ${track.name}`} title={`Phát ${track.name}`}>
+                      <Play size={19} fill="currentColor" className="ml-0.5" />
+                    </button>
+                    {isCurrentTrack && <span className="absolute left-2.5 top-2.5 z-[1] rounded-md bg-black/70 px-2 py-1 text-[9px] font-semibold tracking-wide text-lime-300 backdrop-blur">ĐANG CHỌN</span>}
+                  </div>
+                    <div className="min-w-0 px-0.5 pb-1 pt-3">
+                      <h4 className="truncate text-[13px] font-semibold leading-snug sm:text-sm" title={track.name}>{track.name}</h4>
+                      <p className="mt-1 truncate text-[11px] text-mist-300 sm:text-xs" title={track.artists.join(", ")}>
                         {track.artists.join(", ") || "Chưa rõ nghệ sĩ"}
                       </p>
-                      <p className="mt-1 line-clamp-1 text-xs text-mist-400">
-                        {track.album_name ?? "Chưa rõ album"} · {formatDuration(track.duration_ms)}{releaseYear ? ` · ${releaseYear}` : ""}
+                      <p className="mt-2 truncate text-xs text-mist-400">
+                        {releaseYear ? `${releaseYear} · ` : ""}{formatDuration(track.duration_ms)}
                       </p>
-                      {isCurrentTrack && (
-                        <p className="mt-1 text-xs font-medium text-lime-400">
-                          Đang phát trong Music Discovery
-                        </p>
-                      )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 border-t border-ink-700 p-3">
-                    <button
-                      type="button"
-                      onClick={() => void handlePlay(track)}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-lime-400 px-3 py-2 text-sm font-semibold text-ink-950 hover:bg-lime-300"
-                    >
-                      <PlayCircle size={16} />
-                      {!authorized ? "Kết nối để phát" : isCurrentTrack ? "Phát lại bài này" : "Phát trên website"}
-                    </button>
+                  <div className="track-utilities mt-2 flex items-center gap-1 border-t border-white/[0.05] pt-2">
                     <TrackActions track={track} />
                     <a
                       href={track.spotify_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-ink-600 px-3 py-2 text-sm hover:border-lime-500"
+                      className="ml-auto inline-flex items-center justify-center gap-1 text-[9px] text-mist-400 hover:text-lime-300 sm:text-[10px]"
                       aria-label={`Mở ${track.name} trên Spotify`}
                     >
                       Spotify <ExternalLink size={13} />
@@ -312,6 +365,14 @@ export function MusicLibrary() {
               );
             })}
           </div>
+          {moreError && <p role="alert" className="mt-4 rounded-lg border border-amber-700 p-3 text-sm text-amber-200">{moreError}</p>}
+          {nextOffset !== null && <div className="mt-6 text-center">
+            <button ref={moreButtonRef} type="button" onClick={() => void loadMore()} disabled={loadingMore}
+              className="inline-flex items-center gap-2 rounded-full border border-lime-500 px-6 py-3 text-sm font-semibold text-lime-300 hover:bg-lime-400/10 disabled:opacity-50">
+              {loadingMore && <LoaderCircle size={16} className="animate-spin" />}
+              {loadingMore ? "Đang tải thêm…" : "Tải thêm bài hát"}
+            </button>
+          </div>}
         </section>
       )}
 

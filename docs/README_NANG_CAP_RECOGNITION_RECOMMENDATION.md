@@ -1,5 +1,8 @@
 # Music Discovery Vietnam — bản nâng cấp 2026-11-13
 
+> Cập nhật nhận diện 2026-11-14: xem [CHAY_NHAN_DIEN_FINGERPRINT.md](CHAY_NHAN_DIEN_FINGERPRINT.md).
+> Hiện ưu tiên thuật toán nội bộ trước AcoustID trong chế độ hybrid; có thể chọn landmark để chỉ dùng thuật toán dự án.
+
 ## 1. Các phần đã sửa
 
 - `POST /api/identify`: file do micro, upload hoặc chia sẻ tab tự nguyện được kiểm tra và giải mã bằng FFprobe/FFmpeg thành PCM WAV 11.025 kHz. MIME/đuôi file chỉ là kiểm tra đầu tiên; nội dung audio mới quyết định khả năng xử lý.
@@ -69,7 +72,7 @@ DATABASE_URL='postgresql://USER:PASS@HOST:PORT/DB?sslmode=require' \
 ```
 
 - Chỉ dùng bản ghi âm bạn có quyền xử lý, không dùng luồng Spotify hay vượt DRM.
-- Mỗi lần lập chỉ mục tạo `mdvn-landmark-v2` trên tối đa 300 giây đầu của bản ghi.
+- Mỗi lần lập chỉ mục tạo `mdvn-landmark-v2` trên toàn bộ bản ghi tối đa 30 phút.
 - AcoustID có kho dữ liệu riêng của bên thứ ba. MDVN Landmark chỉ tra kho độc lập; không thể đảm bảo tìm được bài ngẫu nhiên trong Spotify.
 - Score của fingerprint và rank chỉ là điểm nội bộ, chưa được hiệu chỉnh xác suất bằng benchmark thực tế.
 
